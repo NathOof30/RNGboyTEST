@@ -25,6 +25,12 @@ export class ProgressionManager {
       lastDailyTimestamp: 0,
       hasDailyAvailable: true,
 
+      // Invocations horaires (Section Équilibrage : 1 tirage par heure)
+      hourlySpins: {
+        available: GAME_CONFIG.HOURLY_SPIN.STARTER_CHARGES,
+        lastRegenTimestamp: Date.now(),
+      },
+
       // Statistiques globales
       stats: {
         totalGenerations: 0,
@@ -219,6 +225,95 @@ export class ProgressionManager {
 
   resetDaily() {
     this.state.lastDailyTimestamp = 0;
+    this.saveState();
+  }
+
+  // --- INVOCATIONS HORAIRES (Section Équilibrage : 1 tirage par heure) ---
+
+  checkAndRegenHourlySpins() {
+    const cfg = GAME_CONFIG.HOURLY_SPIN;
+    if (!this.state.hourlySpins) {
+      this.state.hourlySpins = {
+        available: cfg.STARTER_CHARGES,
+        lastRegenTimestamp: Date.now(),
+      };
+    }
+
+    const spins = this.state.hourlySpins;
+    if (spins.available < cfg.MAX_CHARGES) {
+      const now = Date.now();
+      const elapsed = now - (spins.lastRegenTimestamp || now);
+      if (elapsed >= cfg.REGEN_INTERVAL_MS) {
+        const recharged = Math.floor(elapsed / cfg.REGEN_INTERVAL_MS);
+        spins.available = Math.min(cfg.MAX_CHARGES, spins.available + recharged);
+        if (spins.available >= cfg.MAX_CHARGES) {
+          spins.lastRegenTimestamp = now;
+        } else {
+          spins.lastRegenTimestamp += recharged * cfg.REGEN_INTERVAL_MS;
+        }
+        this.saveState();
+      }
+    }
+  }
+
+  getHourlySpinInfo() {
+    this.checkAndRegenHourlySpins();
+    const cfg = GAME_CONFIG.HOURLY_SPIN;
+    const spins = this.state.hourlySpins;
+
+    let timeRemainingMs = 0;
+    let countdownFormatted = "Plein";
+
+    if (spins.available < cfg.MAX_CHARGES) {
+      const now = Date.now();
+      const elapsed = now - (spins.lastRegenTimestamp || now);
+      timeRemainingMs = Math.max(0, cfg.REGEN_INTERVAL_MS - elapsed);
+      const minutes = Math.floor(timeRemainingMs / 60000);
+      const seconds = Math.floor((timeRemainingMs % 60000) / 1000);
+      countdownFormatted = `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+    }
+
+    return {
+      available: spins.available,
+      max: cfg.MAX_CHARGES,
+      timeRemainingMs,
+      countdownFormatted,
+      canSpin: spins.available > 0,
+    };
+  }
+
+  consumeHourlySpin() {
+    this.checkAndRegenHourlySpins();
+    const cfg = GAME_CONFIG.HOURLY_SPIN;
+    const spins = this.state.hourlySpins;
+
+    if (spins.available <= 0) return false;
+
+    // Si on était au stock maximum, démarrer le timer de recharge à cet instant
+    if (spins.available === cfg.MAX_CHARGES) {
+      spins.lastRegenTimestamp = Date.now();
+    }
+
+    spins.available--;
+    this.saveState();
+    return true;
+  }
+
+  addHourlySpins(count = 1) {
+    const cfg = GAME_CONFIG.HOURLY_SPIN;
+    if (!this.state.hourlySpins) {
+      this.state.hourlySpins = { available: cfg.STARTER_CHARGES, lastRegenTimestamp: Date.now() };
+    }
+    this.state.hourlySpins.available = Math.min(cfg.MAX_CHARGES + 5, this.state.hourlySpins.available + count);
+    this.saveState();
+  }
+
+  resetHourlyCooldown() {
+    const cfg = GAME_CONFIG.HOURLY_SPIN;
+    this.state.hourlySpins = {
+      available: cfg.MAX_CHARGES,
+      lastRegenTimestamp: Date.now(),
+    };
     this.saveState();
   }
 

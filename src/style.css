@@ -494,7 +494,14 @@ body {
 .rarity-border-epic { border-left: 4px solid var(--rarity-epic); }
 .rarity-border-legendary {
   border-left: 4px solid var(--rarity-legendary);
-  box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+  box-shadow: 0 0 25px rgba(251, 191, 36, 0.3), inset 0 0 15px rgba(251, 191, 36, 0.05);
+  background: linear-gradient(145deg, #181d33, #151a2e);
+  animation: legendaryPulse 3s infinite ease-in-out;
+}
+
+@keyframes legendaryPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.25); }
+  50% { box-shadow: 0 0 35px rgba(251, 191, 36, 0.5); }
 }
 
 .card-header {
@@ -509,6 +516,27 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+.creator-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.badge-player-author {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.badge-bot-author {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
 .daily-pill {
@@ -531,7 +559,81 @@ body {
 .badge-common { background: rgba(148, 163, 184, 0.2); color: var(--rarity-common); }
 .badge-rare { background: rgba(56, 189, 248, 0.2); color: var(--rarity-rare); }
 .badge-epic { background: rgba(192, 132, 252, 0.2); color: var(--rarity-epic); }
-.badge-legendary { background: rgba(251, 191, 36, 0.2); color: var(--rarity-legendary); }
+.badge-legendary {
+  background: rgba(251, 191, 36, 0.25);
+  color: var(--rarity-legendary);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+}
+
+/* Bandeau des charges d'invocations horaires */
+.spins-status-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+
+.spins-status-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.spins-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4));
+}
+
+.spins-count-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spins-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.spins-number {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.spins-regen-row {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.spins-scarcity-hint {
+  font-size: 12px;
+  font-weight: 700;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.15);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.chip-spin {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.chip-timer {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 4px;
+  font-weight: 500;
+}
 
 .traits-row {
   display: flex;

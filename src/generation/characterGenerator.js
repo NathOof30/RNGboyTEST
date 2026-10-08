@@ -115,14 +115,12 @@ export function calculateRarity(power, synergiesCount, isDaily = false, forcedRa
 
   let rolledRarity = weightedChoice(pool, rng);
 
-  // Bonus d'évaluation : si le personnage a une synergie exceptionnelle ou un power très haut (>84),
-  // il peut être promu s'il était trop bas
-  if (power >= 84 && synergiesCount >= 2 && rolledRarity === "common") {
+  // Bonus d'évaluation restreint : uniquement pour éviter qu'une combinaison exceptionnelle reste en Commun
+  if (power >= 86 && synergiesCount >= 2 && rolledRarity === "common") {
     rolledRarity = "rare";
   }
-  if (power >= 92 && synergiesCount >= 2 && rolledRarity !== "legendary") {
-    // Chance de promotion épique/légendaire
-    if (rng() < 0.4) rolledRarity = "legendary";
+  if (power >= 95 && synergiesCount >= 2 && rolledRarity === "rare") {
+    rolledRarity = "epic";
   }
 
   return rolledRarity;

@@ -56,15 +56,19 @@ export class DevUI {
 
             <!-- GESTION PROGRESSION & DAILY -->
             <div class="dev-box">
-              <h4>⭐ Progression & Événements</h4>
+              <h4>⭐ Progression & Invocations</h4>
               <div class="dev-btn-group">
                 <button class="btn btn-outline btn-sm" id="dev-add-points">+1 000 Points</button>
                 <button class="btn btn-outline btn-sm" id="dev-add-xp">+500 XP</button>
-                <button class="btn btn-secondary btn-sm" id="dev-reset-daily">🕒 Reset Cooldown Daily</button>
+                <button class="btn btn-secondary btn-sm" id="dev-reset-daily">🕒 Reset Daily</button>
+              </div>
+              <div class="dev-btn-group" style="margin-top: 8px;">
+                <button class="btn btn-outline btn-sm" id="dev-add-spin">🎟️ +2 Invocations</button>
+                <button class="btn btn-secondary btn-sm" id="dev-reset-hourly">⚡ Reset Cooldown Horaire</button>
               </div>
               <div class="dev-btn-group" style="margin-top: 8px;">
                 <button class="btn btn-danger btn-sm" id="dev-clear-coll">🗑️ Vider collection</button>
-                <button class="btn btn-outline-danger btn-sm" id="dev-reset-all">⚠️ Reset total de la partie</button>
+                <button class="btn btn-outline-danger btn-sm" id="dev-reset-all">⚠️ Reset total</button>
               </div>
             </div>
           </div>
@@ -160,6 +164,18 @@ export class DevUI {
     this.container.querySelector("#dev-reset-daily")?.addEventListener("click", () => {
       progressionManager.resetDaily();
       showToast("Cooldown du Personnage Quotidien réinitialisé !", "info");
+      this.notifyChange();
+    });
+
+    this.container.querySelector("#dev-add-spin")?.addEventListener("click", () => {
+      progressionManager.addHourlySpins(2);
+      showToast("+2 Invocations ajoutées !", "success");
+      this.notifyChange();
+    });
+
+    this.container.querySelector("#dev-reset-hourly")?.addEventListener("click", () => {
+      progressionManager.resetHourlyCooldown();
+      showToast("Cooldown horaire réinitialisé (Stock plein) !", "info");
       this.notifyChange();
     });
 

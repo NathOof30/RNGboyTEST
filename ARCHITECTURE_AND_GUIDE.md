@@ -50,13 +50,15 @@ Le code est rigoureusement découplé conformément aux spécifications du proje
 
 ## 2. Explications des Mécaniques Clés
 
-### 2.1. Comment fonctionne la génération ?
-1. **Sélection des 3 composantes** : Lors du lancement, un tirage pondéré (`weightedChoice`) détermine la **Race**, l'**Arme** et le **Pouvoir** selon leurs poids respectifs définis dans `races.js`, `weapons.js` et `powers.js`.
-2. **Détection des synergies** : `calculateSynergies()` analyse le trio `{ raceId, weaponId, powerId }` et active les synergies et combinaisons instables éligibles.
-3. **Tirage des statistiques de base** : Les valeurs initiales sont tirées dans une fourchette équilibrée (ex: 55-75 PV, 45-70 Force, etc.).
-4. **Application des modificateurs** : Les bonus de race (avec variance aléatoire supplémentaire pour le **Mutant**), d'arme et de synergies s'additionnent.
-5. **Calcul du POWER et de la Rareté** : Un score global pondéré est calculé, puis la rareté est attribuée.
-6. **Attribution d'un nom** : `generateCharacterName()` combine des préfixes/suffixes phonétiques (ou désignation robotique type `X-17`).
+### 2.1. Comment fonctionne la génération & régulation ?
+1. **Régulation horaire (Anti-création infinie)** : Le joueur dispose d'un stock d'invocations (maximum 2). Une invocation se recharge automatiquement toutes les heures (3 600 secondes).
+2. **Sélection des 3 composantes** : Lors du lancement, un tirage pondéré (`weightedChoice`) détermine la **Race**, l'**Arme** et le **Pouvoir** selon leurs poids respectifs définis dans `races.js`, `weapons.js` et `powers.js`.
+3. **Détection des synergies** : `calculateSynergies()` analyse le trio `{ raceId, weaponId, powerId }` et active les synergies et combinaisons instables éligibles.
+4. **Tirage des statistiques de base** : Les valeurs initiales sont tirées dans une fourchette équilibrée (ex: 55-75 PV, 45-70 Force, etc.).
+5. **Application des modificateurs** : Les bonus de race (avec variance aléatoire supplémentaire pour le **Mutant**), d'arme et de synergies s'additionnent.
+6. **Calcul du POWER et de la Rareté** : Un score global pondéré est calculé, puis la rareté est attribuée selon la table stricte.
+7. **Attribution d'un nom** : `generateCharacterName()` combine des préfixes/suffixes phonétiques (ou désignation robotique type `X-17`).
+8. **Enregistrement communautaire** : Dès qu'une carte est conservée, elle est ajoutée au pool communautaire partagé pour servir d'adversaire potentiel à d'autres joueurs.
 
 ### 2.2. Comment fonctionne le calcul des statistiques ?
 Dans `src/generation/characterGenerator.js` :
@@ -68,11 +70,17 @@ Dans `src/data/config.js` et `calculatePower()` :
 $$\text{Power} = (\text{HP} \times 0.24) + (\text{Force} \times 0.32) + (\text{Défense} \times 0.24) + (\text{Vitesse} \times 0.20) + (\text{Synergies} \times 3) + (\text{Bonus Instable})$$
 Le score oscille typiquement entre 40 et 95.
 
-### 2.4. Comment fonctionne la rareté ?
+### 2.4. Comment fonctionne la rareté (Véritable Scarcity) ?
 Dans `src/data/config.js` :
-* **Génération Standard** : Commun (60%), Rare (28%), Épique (10%), Légendaire (2%).
-* **Génération Quotidienne (Daily)** : Commun (25%), Rare (45%), Épique (22%), Légendaire (8%).
-* **Évaluation de qualité** : Un personnage doté d'un Power $\ge 84$ et de 2 synergies ou plus a une chance supplémentaire d'être promu Rare, Épique ou Légendaire.
+* **Génération Standard** : Commun (72%), Rare (21%), Épique (6%), **Légendaire (1.0%)**.
+* **Génération Quotidienne (Daily)** : Commun (48%), Rare (34%), Épique (14%), **Légendaire (4.0%)**.
+* La rareté Légendaire est un véritable événement prestigieux aux bordures dorées rayonnantes.
+
+### 2.5. Comment fonctionnent les adversaires de combat (Matchmaking) ?
+Dans `src/combat/opponentsPool.js` :
+1. **Priorité aux cartes créées par les joueurs** : Le système recherche en priorité des combattants créés par d'autres joueurs (dans une tranche de puissance similaire).
+2. **Fallback automatique vers les combattants fictifs** : Si le pool de cartes joueurs est vide ou insuffisant au lancement, l'arène génère automatiquement un combattant fictif (IA d'arène).
+3. **Badges d'origine** : Chaque carte indique clairement `👤 [Pseudo du joueur]` ou `🤖 Bot Arène`.
 
 ### 2.5. Comment fonctionnent les synergies ?
 Définies dans `src/data/synergies.js`. Chaque synergie possède une fonction `condition(char)` et des `effects`.

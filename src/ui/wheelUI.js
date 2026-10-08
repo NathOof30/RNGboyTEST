@@ -1,9 +1,10 @@
 /**
- * INTERFACE DE GÉNÉRATION DES ROUES (Sections 6, 15, 16, 42, 44)
+ * INTERFACE DE GÉNÉRATION DES ROUES (Sections 6, 15, 16, 42, 44 + Équilibrage Horaire)
  * 
- * Anime les rouleaux des roues (Race, Arme, Pouvoir),
- * gère le bouton d'accélération (skip animation),
- * et présente la décision Garder / Rejeter.
+ * - Régulation stricte : 1 tirage par heure (stocke jusqu'à 2 charges max)
+ * - Rareté précieuse : chaque invocation compte
+ * - Compte à rebours dynamique en temps réel
+ * - Enregistrement automatique des cartes créées dans le pool communautaire pour l'arène
  */
 
 import { RACES } from "../data/races.js";
@@ -14,6 +15,7 @@ import { renderCharacterCard } from "./characterCardUI.js";
 import { sound } from "../utils/sound.js";
 import { collectionManager } from "../collection/collectionManager.js";
 import { progressionManager } from "../progression/progressionManager.js";
+import { registerPlayerCardToCommunity } from "../combat/opponentsPool.js";
 import { showToast } from "./notifications.js";
 
 export class WheelUI {
@@ -23,8 +25,10 @@ export class WheelUI {
     this.isSpinning = false;
     this.pendingCharacter = null;
     this.spinIntervals = [];
+    this.tickerInterval = null;
 
     this.render();
+    this.startTicker();
   }
 
   render() {
@@ -32,7 +36,26 @@ export class WheelUI {
       <div class="generator-wrapper">
         <div class="generator-header">
           <h2>🎡 Générateur de Personnages</h2>
-          <p class="section-subtitle">Lancez les roues pour forger un guerrier unique</p>
+          <p class="section-subtitle">Chaque invocation est rare et précieuse. Forgez un combattant et bâtissez votre légende.</p>
+        </div>
+
+        <!-- BANDEAU DES CHARGES HORAIRES (1 tirage par heure) -->
+        <div class="spins-status-card" id="spins-status-card">
+          <div class="spins-status-left">
+            <span class="spins-icon">🎟️</span>
+            <div class="spins-info-text">
+              <div class="spins-count-row">
+                <span class="spins-label">Invocations disponibles :</span>
+                <span class="spins-number" id="spins-available-count">0 / 2</span>
+              </div>
+              <div class="spins-regen-row" id="spins-regen-text">
+                ⏳ Chargement...
+              </div>
+            </div>
+          </div>
+          <div class="spins-status-right">
+            <span class="spins-scarcity-hint" title="1 recharge automatique toutes les heures (Max 2)">⚡ 1 recharge / heure</span>
+          </div>
         </div>
 
         <!-- ROUES / ROULEAUX -->
@@ -71,13 +94,13 @@ export class WheelUI {
         <!-- BOUTONS DE LANCEMENT -->
         <div class="generator-controls" id="generator-controls">
           <button class="btn btn-primary btn-large btn-spin" id="btn-spin">
-            🎰 Lancer les roues
+            🎰 Lancer les roues (1 Jeton)
           </button>
           <button class="btn btn-secondary btn-fast" id="btn-spin-fast" title="Passe directement le résultat">
-            ⚡ Génération instantanée
+            ⚡ Tirage instantané
           </button>
-          <button class="btn btn-outline" id="btn-spin-10" title="Génère 10 personnages d'un coup">
-            🎲 Générer 10
+          <button class="btn btn-outline" id="btn-spin-10" title="Outil développeur pour tester les probabilités">
+            🎲 Générer 10 (Dev Test)
           </button>
         </div>
 
@@ -99,10 +122,10 @@ export class WheelUI {
           </div>
         </div>
 
-        <!-- ZONE DU LOT MULTIPLE (BATCH 10) -->
+        <!-- ZONE DU LOT MULTIPLE (BATCH 10 - DEV) -->
         <div class="batch-zone hidden" id="batch-zone">
           <div class="batch-header">
-            <h3>🎉 10 Personnages Générés</h3>
+            <h3>🎉 10 Personnages Générés (Mode Test)</h3>
             <div class="batch-actions">
               <button class="btn btn-success btn-sm" id="btn-batch-keep-all">Tout conserver</button>
               <button class="btn btn-outline btn-sm" id="btn-batch-close">Fermer</button>
@@ -114,6 +137,7 @@ export class WheelUI {
     `;
 
     this.bindEvents();
+    this.updateSpinsDisplay();
   }
 
   bindEvents() {
@@ -123,12 +147,76 @@ export class WheelUI {
     const btnKeep = this.container.querySelector("#btn-keep");
     const btnDiscard = this.container.querySelector("#btn-discard");
 
-    btnSpin?.addEventListener("click", () => this.startGeneration(false));
-    btnFast?.addEventListener("click", () => this.startGeneration(true));
+    btnSpin?.addEventListener("click", () => this.handleSpinClick(false));
+    btnFast?.addEventListener("click", () => this.handleSpinClick(true));
     btn10?.addEventListener("click", () => this.generateBatch(10));
 
     btnKeep?.addEventListener("click", () => this.handleKeep());
     btnDiscard?.addEventListener("click", () => this.handleDiscard());
+  }
+
+  startTicker() {
+    if (this.tickerInterval) clearInterval(this.tickerInterval);
+    this.tickerInterval = setInterval(() => {
+      this.updateSpinsDisplay();
+    }, 1000);
+  }
+
+  updateSpinsDisplay() {
+    const info = progressionManager.getHourlySpinInfo();
+    const countEl = this.container.querySelector("#spins-available-count");
+    const regenEl = this.container.querySelector("#spins-regen-text");
+    const btnSpin = this.container.querySelector("#btn-spin");
+    const btnFast = this.container.querySelector("#btn-spin-fast");
+
+    if (countEl) {
+      countEl.textContent = `${info.available} / ${info.max}`;
+      countEl.className = `spins-number ${info.available > 0 ? 'text-win' : 'text-loss'}`;
+    }
+
+    if (regenEl) {
+      if (info.available >= info.max) {
+        regenEl.innerHTML = `<span class="text-win">✓ Stock plein (${info.max}/${info.max})</span>`;
+      } else {
+        regenEl.innerHTML = `⏳ Prochain tirage dans : <strong>${info.countdownFormatted}</strong>`;
+      }
+    }
+
+    // Gestion de l'état des boutons si 0 tirage
+    if (!this.isSpinning) {
+      if (btnSpin) {
+        if (info.available <= 0) {
+          btnSpin.textContent = `⏳ Recharge dans ${info.countdownFormatted}`;
+          btnSpin.disabled = true;
+        } else {
+          btnSpin.textContent = `🎰 Lancer les roues (1 Jeton)`;
+          btnSpin.disabled = false;
+        }
+      }
+      if (btnFast) {
+        btnFast.disabled = info.available <= 0;
+      }
+    }
+  }
+
+  handleSpinClick(instant = false) {
+    const spinInfo = progressionManager.getHourlySpinInfo();
+
+    if (!spinInfo.canSpin) {
+      showToast(
+        `⏳ <strong>Aucun tirage disponible !</strong><br>Prochaine recharge dans ${spinInfo.countdownFormatted}. Rendez-vous sur le Daily ou patientez.`,
+        "warning"
+      );
+      return;
+    }
+
+    // Consommer 1 jeton horaire
+    progressionManager.consumeHourlySpin();
+    this.updateSpinsDisplay();
+    if (this.onCollectionUpdated) this.onCollectionUpdated();
+
+    // Lancer la génération
+    this.startGeneration(instant);
   }
 
   /**
@@ -195,7 +283,7 @@ export class WheelUI {
       clearInterval(intervalPower);
       if (reelPower) reelPower.innerHTML = `<span class="wheel-icon">${character.powerIcon}</span><span class="wheel-label">${character.power}</span>`;
       this.isSpinning = false;
-      this.setControlsDisabled(false);
+      this.updateSpinsDisplay();
       this.revealCharacter(character);
     }, 1600);
   }
@@ -216,8 +304,6 @@ export class WheelUI {
 
     cardContainer.innerHTML = renderCharacterCard(character, { isDetail: true });
     revealZone.classList.remove("hidden");
-
-    // Scroll doux vers le personnage révélé
     revealZone.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
     // Effet sonore selon la rareté
@@ -225,7 +311,7 @@ export class WheelUI {
 
     // Notifications spéciales
     if (character.rarity === "legendary") {
-      showToast("🌟 <strong>LÉGENDAIRE !</strong> Vous avez forgé un guerrier d'exception !", "success");
+      showToast("🌟 <strong>LÉGENDAIRE !</strong> Un tirage exceptionnel extrêmement rare !", "success", 5000);
     }
     if (character.isUnstable) {
       showToast("💥 <strong>COMBINAISON INSTABLE !</strong> Des effets spéciaux sont activés !", "warning");
@@ -235,10 +321,16 @@ export class WheelUI {
   handleKeep() {
     if (!this.pendingCharacter) return;
 
+    // 1. Sauvegarde dans la collection du joueur
     collectionManager.addCharacter(this.pendingCharacter);
+
+    // 2. Enregistrement dans le pool communautaire (pour les duels d'arène d'autres joueurs !)
+    registerPlayerCardToCommunity(this.pendingCharacter, "Toi");
+
+    // 3. Traitement XP & Succès
     const result = progressionManager.processGeneration(this.pendingCharacter);
 
-    showToast(`✅ <strong>${this.pendingCharacter.name}</strong> ajouté à votre collection ! (+XP)`, "success");
+    showToast(`✅ <strong>${this.pendingCharacter.name}</strong> ajouté à votre collection !`, "success");
 
     if (result.newAchievements?.length > 0) {
       result.newAchievements.forEach(ach => {
@@ -250,6 +342,7 @@ export class WheelUI {
     const revealZone = this.container.querySelector("#reveal-zone");
     revealZone?.classList.add("hidden");
 
+    this.updateSpinsDisplay();
     if (this.onCollectionUpdated) this.onCollectionUpdated();
   }
 
@@ -259,6 +352,7 @@ export class WheelUI {
     this.pendingCharacter = null;
     const revealZone = this.container.querySelector("#reveal-zone");
     revealZone?.classList.add("hidden");
+    this.updateSpinsDisplay();
   }
 
   /**
@@ -295,6 +389,7 @@ export class WheelUI {
         const json = decodeURIComponent(btn.getAttribute("data-char-json"));
         const char = JSON.parse(json);
         collectionManager.addCharacter(char);
+        registerPlayerCardToCommunity(char, "Toi (Dev)");
         progressionManager.processGeneration(char);
         btn.textContent = "✓ Conservé";
         btn.classList.replace("btn-primary", "btn-secondary");
@@ -308,6 +403,7 @@ export class WheelUI {
     btnKeepAll?.addEventListener("click", () => {
       chars.forEach(c => {
         collectionManager.addCharacter(c);
+        registerPlayerCardToCommunity(c, "Toi (Dev)");
         progressionManager.processGeneration(c);
       });
       showToast(`🎉 Les ${count} personnages ont été ajoutés à votre collection !`, "success");

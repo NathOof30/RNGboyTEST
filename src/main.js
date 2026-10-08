@@ -38,8 +38,9 @@ class App {
     this.bindNavigation();
     this.bindHeaderActions();
 
-    // 3. Mise à jour initiale de l'en-tête
+    // 3. Mise à jour initiale de l'en-tête et boucle de rafraîchissement temps réel
     this.updateHeaderStats();
+    setInterval(() => this.updateHeaderStats(), 1000);
 
     // 4. Si la collection est vide au tout premier lancement, on peut proposer de démarrer
     console.log("🎮 WHEELBORN Prototype initialisé avec succès !");
@@ -148,16 +149,30 @@ class App {
     const levelEl = document.getElementById("header-level");
     const collBadge = document.getElementById("nav-coll-badge");
     const dailyBadge = document.getElementById("nav-daily-badge");
+    const spinsValEl = document.getElementById("header-spins-val");
+    const spinsTimerEl = document.getElementById("header-spins-timer");
 
     const collCount = collectionManager.getAll().length;
     const points = progressionManager.state.points;
     const lvlInfo = progressionManager.getCurrentLevelInfo();
     const dailyAvail = progressionManager.isDailyAvailable();
+    const spinInfo = progressionManager.getHourlySpinInfo();
 
     if (countEl) countEl.textContent = collCount;
     if (pointsEl) pointsEl.textContent = points.toLocaleString();
     if (levelEl) levelEl.textContent = lvlInfo.level;
     if (collBadge) collBadge.textContent = collCount;
+
+    if (spinsValEl) spinsValEl.textContent = `${spinInfo.available}/${spinInfo.max}`;
+    if (spinsTimerEl) {
+      if (spinInfo.available >= spinInfo.max) {
+        spinsTimerEl.textContent = "(Plein)";
+        spinsTimerEl.className = "chip-timer text-win";
+      } else {
+        spinsTimerEl.textContent = `(${spinInfo.countdownFormatted})`;
+        spinsTimerEl.className = "chip-timer";
+      }
+    }
 
     if (dailyBadge) {
       dailyBadge.textContent = dailyAvail ? "Prêt" : "⏳";

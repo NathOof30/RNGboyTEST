@@ -10,20 +10,27 @@ export const GAME_CONFIG = {
   VERSION: "0.1.0-prototype",
 
   // Probabilités de rareté lors de la génération standard (en %)
-  // Modifiable facilement pour ajuster l'équilibrage
+  // Équilibrage : Les cartes Légendaires sont désormais un véritable Graal (1%)
   RARITY_WEIGHTS: {
-    common: 60,     // Commun 60%
-    rare: 28,       // Rare 28%
-    epic: 10,       // Épique 10%
-    legendary: 2,   // Légendaire 2%
+    common: 72,     // Commun 72%
+    rare: 21,       // Rare 21%
+    epic: 6,        // Épique 6%
+    legendary: 1,   // Légendaire 1% (Véritablement rare et précieux)
   },
 
   // Probabilités de rareté pour la génération quotidienne (Bonus Daily)
   DAILY_RARITY_WEIGHTS: {
-    common: 25,
-    rare: 45,
-    epic: 22,
-    legendary: 8,
+    common: 48,
+    rare: 34,
+    epic: 14,
+    legendary: 4,
+  },
+
+  // Système d'invocation horaire (1 tirage par heure)
+  HOURLY_SPIN: {
+    MAX_CHARGES: 2,             // Maximum de charges stockables
+    REGEN_INTERVAL_MS: 3600000, // 1 heure (3600 secondes = 3 600 000 ms)
+    STARTER_CHARGES: 2,         // Charges initiales pour débuter la démo
   },
 
   // Seuils de statistiques de base (Roll initial avant modificateurs de race/arme)
