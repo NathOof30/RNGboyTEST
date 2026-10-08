@@ -1,0 +1,1659 @@
+# PROJET : Prototype jouable — Générateur de personnages, collection et combats
+
+## 0. RÔLE
+
+Tu es un développeur full-stack expérimenté spécialisé dans la création rapide de prototypes de jeux web.
+
+Ta mission est de construire un **prototype temporaire mais réellement jouable** d'un jeu web basé sur :
+
+* la génération aléatoire de personnages par plusieurs roues ;
+* la collection de personnages ;
+* les statistiques et synergies entre leurs caractéristiques ;
+* un système de rareté ;
+* des combats automatiques entre personnages ;
+* une progression par points ;
+* une mécanique de personnage quotidien ;
+* une petite dimension stratégique liée au choix des personnages.
+
+Le but de ce projet n'est PAS de produire la version finale du jeu.
+
+Le but est de répondre à une question :
+
+> **"Est-ce que cette boucle de jeu est réellement amusante ?"**
+
+Le prototype doit donc privilégier :
+
+1. le gameplay ;
+2. la clarté ;
+3. la rapidité ;
+4. la possibilité de tester énormément de combinaisons ;
+5. la possibilité de recommencer facilement.
+
+Le visuel doit être **volontairement très simple et minimaliste**.
+
+Ne cherche PAS à créer un produit commercial.
+
+---
+
+# 1. CONCEPT DU JEU
+
+Le joueur crée des personnages fictifs en lançant plusieurs roues aléatoires.
+
+Chaque roue détermine une caractéristique du personnage.
+
+Exemple :
+
+* Race
+* Arme
+* Pouvoir
+* Force
+* Vitesse
+* Défense
+* éventuellement une caractéristique supplémentaire
+
+Le résultat final produit un personnage.
+
+Exemple :
+
+> DEMON
+> ARC
+> GRAVITÉ
+> Force : 82
+> Vitesse : 51
+> Défense : 64
+
+Le joueur peut ensuite :
+
+* conserver le personnage ;
+* consulter sa fiche ;
+* le comparer à ses autres personnages ;
+* l'utiliser dans un combat ;
+* gagner des points ;
+* essayer de construire une meilleure collection.
+
+L'expérience doit donner envie de se dire :
+
+> "Qu'est-ce que je vais obtenir cette fois ?"
+
+puis :
+
+> "Oh, celui-là est vraiment intéressant."
+
+puis :
+
+> "Est-ce qu'il est meilleur que celui que j'ai déjà ?"
+
+puis :
+
+> "Je vais essayer de le faire combattre."
+
+---
+
+# 2. BOUCLE DE JEU PRINCIPALE
+
+La boucle principale doit être :
+
+```text
+GÉNÉRER
+   ↓
+DÉCOUVRIR LE PERSONNAGE
+   ↓
+ÉVALUER SES STATISTIQUES
+   ↓
+DÉCIDER DE LE CONSERVER
+   ↓
+AJOUT À LA COLLECTION
+   ↓
+UTILISER EN COMBAT
+   ↓
+GAGNER / PERDRE
+   ↓
+GAGNER DES POINTS
+   ↓
+AMÉLIORER SA COLLECTION
+   ↓
+RECOMMENCER
+```
+
+Le joueur doit comprendre cette boucle en moins de 30 secondes.
+
+---
+
+# 3. TECHNOLOGIE
+
+Pour ce prototype, utilise la technologie qui permet d'aller le plus vite.
+
+La technologie finale envisagée sera Laravel + Livewire, mais **ce prototype n'a pas besoin d'utiliser Laravel ou Livewire** si cela ralentit le développement.
+
+Tu peux utiliser par exemple :
+
+* HTML
+* CSS
+* JavaScript
+* éventuellement React/Vite si cela apporte réellement quelque chose.
+
+Priorité absolue :
+
+> prototype fonctionnel > architecture parfaite.
+
+Le projet doit cependant être organisé proprement afin de pouvoir comprendre les mécaniques et éventuellement les retranscrire plus tard dans Laravel + Livewire.
+
+---
+
+# 4. DESIGN
+
+Le design doit être volontairement minimaliste.
+
+NE PAS :
+
+* créer une interface ultra travaillée ;
+* ajouter des illustrations complexes ;
+* utiliser des dizaines d'animations ;
+* créer un système graphique compliqué ;
+* perdre du temps sur les assets.
+
+Utiliser simplement :
+
+* cartes ;
+* boutons ;
+* texte ;
+* icônes simples si nécessaire ;
+* barres de statistiques ;
+* couleurs sobres ;
+* quelques animations très simples.
+
+Le prototype doit ressembler à :
+
+> "un prototype fonctionnel d'un jeu"
+
+et non :
+
+> "un jeu commercial terminé".
+
+---
+
+# 5. PAGE PRINCIPALE
+
+Créer une page principale contenant :
+
+## Header
+
+Afficher :
+
+* nom temporaire du jeu ;
+* nombre de personnages possédés ;
+* nombre de points ;
+* bouton Collection ;
+* bouton Combat.
+
+Exemple :
+
+```text
+[ WHEELBORN ]
+
+Personnages : 12
+Points : 1 420
+
+[ GÉNÉRER ] [ COLLECTION ] [ COMBAT ]
+```
+
+---
+
+# 6. GÉNÉRATION DE PERSONNAGE
+
+La génération est le cœur du prototype.
+
+Créer une interface avec plusieurs roues.
+
+Exemple :
+
+```text
+┌─────────────┐
+│    RACE     │
+│             │
+│   DEMON     │
+│      ↓      │
+│    ELF      │
+│      ↓      │
+│   ROBOT     │
+└─────────────┘
+
+┌─────────────┐
+│    ARME     │
+│             │
+│    ARC      │
+│      ↓      │
+│   MARTEAU   │
+│      ↓      │
+│    ÉPÉE     │
+└─────────────┘
+
+┌─────────────┐
+│   POUVOIR   │
+│             │
+│   GRAVITÉ   │
+│      ↓      │
+│   POISON    │
+│      ↓      │
+│ TÉLÉPORT.   │
+└─────────────┘
+```
+
+L'animation réelle d'une roue n'a pas besoin d'être techniquement complexe.
+
+Une simple animation de changement rapide des valeurs est suffisante.
+
+---
+
+# 7. CARACTÉRISTIQUES DES ROUES
+
+Créer au minimum 5 catégories.
+
+## RACE
+
+Valeurs :
+
+* Humain
+* Elfe
+* Démon
+* Robot
+* Mutant
+* Golem
+* Vampire
+* Alien
+
+Chaque race doit avoir des effets légers sur les statistiques.
+
+Exemple :
+
+### Humain
+
+Équilibré.
+
+### Elfe
+
+* vitesse
+
+- défense
+
+### Démon
+
+* force
+
+- défense
+
+### Robot
+
+* défense
+
+- vitesse
+
+### Mutant
+
+statistiques imprévisibles.
+
+### Golem
+
+* défense
+
+- vitesse
+
+### Vampire
+
+* attaque
+* régénération
+
+### Alien
+
+statistiques équilibrées mais possède des synergies particulières.
+
+---
+
+# 8. ARME
+
+Créer au minimum :
+
+* Épée
+* Arc
+* Marteau
+* Lance
+* Dague
+* Bâton
+* Pistolet
+* Grimoire
+
+Les armes ne doivent pas uniquement modifier une statistique.
+
+Elles peuvent également influencer certaines interactions.
+
+Exemple :
+
+### Épée
+
+* attaque
+
+### Arc
+
+* vitesse
+
+### Marteau
+
+* dégâts
+
+- vitesse
+
+### Dague
+
+* vitesse
+  bonus contre personnages lents
+
+### Bâton
+
+bonus avec certains pouvoirs
+
+### Grimoire
+
+bonus avec les pouvoirs magiques
+
+---
+
+# 9. POUVOIRS
+
+Créer au minimum :
+
+* Feu
+* Glace
+* Poison
+* Foudre
+* Gravité
+* Téléportation
+* Régénération
+* Invisibilité
+
+Les pouvoirs doivent créer des effets différents.
+
+Exemple :
+
+### FEU
+
+Possibilité d'infliger brûlure.
+
+### GLACE
+
+Réduit la vitesse ennemie.
+
+### POISON
+
+Inflige des dégâts sur plusieurs tours.
+
+### FOUDRE
+
+Possibilité de coup critique.
+
+### GRAVITÉ
+
+Réduit fortement la vitesse adverse.
+
+### TÉLÉPORTATION
+
+Permet d'éviter une attaque.
+
+### RÉGÉNÉRATION
+
+Récupère des PV.
+
+### INVISIBILITÉ
+
+Possibilité d'esquiver.
+
+---
+
+# 10. STATISTIQUES
+
+Chaque personnage doit avoir :
+
+* HP / Vie
+* Force
+* Vitesse
+* Défense
+
+Les valeurs doivent généralement être comprises entre 1 et 100.
+
+La génération doit partir d'une base relativement équilibrée.
+
+Exemple :
+
+```text
+Force      72
+Vitesse    48
+Défense    65
+PV         78
+```
+
+Puis les caractéristiques du personnage modifient ces valeurs.
+
+IMPORTANT :
+
+Ne pas simplement additionner énormément de bonus.
+
+Les personnages doivent rester relativement équilibrés.
+
+---
+
+# 11. SCORE GLOBAL
+
+Chaque personnage doit avoir un score global.
+
+Exemple :
+
+```text
+Score = moyenne pondérée de :
+
+Force
+Vitesse
+Défense
+PV
+```
+
+Le score doit être visible.
+
+Exemple :
+
+> POWER : 74
+
+Mais le score global ne doit PAS déterminer directement le gagnant d'un combat.
+
+Les synergies et les caractéristiques doivent avoir de l'importance.
+
+---
+
+# 12. RARETÉ
+
+Chaque personnage possède une rareté :
+
+* Commun
+* Rare
+* Épique
+* Légendaire
+
+La rareté doit dépendre de la combinaison obtenue et/ou d'un calcul de qualité.
+
+Exemple :
+
+### Commun
+
+combinaison ordinaire.
+
+### Rare
+
+une caractéristique particulièrement élevée.
+
+### Épique
+
+combinaison intéressante.
+
+### Légendaire
+
+combinaison très rare ou particulièrement cohérente.
+
+IMPORTANT :
+
+La rareté ne doit PAS simplement signifier :
+
+> "plus rare = automatiquement meilleur".
+
+Un personnage Commun avec une excellente synergie peut battre un Légendaire.
+
+---
+
+# 13. SYNERGIES
+
+C'est une mécanique extrêmement importante.
+
+Certaines combinaisons doivent produire des effets supplémentaires.
+
+Exemples :
+
+```text
+Démon + Feu
+→ bonus de dégâts
+
+Elfe + Arc
+→ bonus de vitesse
+
+Robot + Foudre
+→ résistance à la foudre
+
+Vampire + Régénération
+→ régénération améliorée
+
+Golem + Marteau
+→ bonus de dégâts lourds
+
+Mage/Grimoire + Pouvoir magique
+→ bonus de puissance
+```
+
+Créer au moins 10 synergies différentes.
+
+Les synergies doivent être affichées clairement sur la fiche du personnage.
+
+Exemple :
+
+```text
+SYNERGIES
+
+🔥 Affinité démoniaque
++10% dégâts avec Feu
+
+🏹 Archer naturel
++8 vitesse avec Arc
+```
+
+---
+
+# 14. COMBINAISONS INSTABLES
+
+Créer également quelques combinaisons inhabituelles.
+
+Certaines associations peuvent provoquer des effets spéciaux.
+
+Exemple :
+
+```text
+Démon + Glace
+→ Combinaison instable
+
+Robot + Poison
+→ Infection artificielle
+
+Golem + Téléportation
+→ Masse déplacée
+```
+
+Ces combinaisons ne doivent pas nécessairement être puissantes.
+
+Le but est de créer des résultats surprenants.
+
+Le joueur doit parfois se dire :
+
+> "Je ne savais même pas que cette combinaison existait."
+
+---
+
+# 15. PERSONNAGE FINAL
+
+Une fois toutes les roues terminées, afficher une grande carte :
+
+```text
+┌──────────────────────────────┐
+
+          VARK
+
+          DEMON
+
+         ★★★★☆
+
+       🏹 ARC
+      🌌 GRAVITÉ
+
+     ❤️ 82
+     ⚔️ 76
+     ⚡ 51
+     🛡️ 64
+
+     POWER : 71
+
+     SYNERGIES
+     • Archer naturel
+     • Affinité démoniaque
+
+┌──────────────────────────────┐
+
+[ GARDER ]
+
+```
+
+Le nom doit être généré automatiquement.
+
+Créer un système simple de génération de noms.
+
+Exemple :
+
+* Vark
+* Zoran
+* Lyra
+* Korr
+* Nym
+* Xero
+* Val
+* Ryn
+* etc.
+
+Combiner éventuellement deux listes de syllabes.
+
+---
+
+# 16. DÉCISION APRÈS GÉNÉRATION
+
+Une fois le personnage créé :
+
+Afficher :
+
+> **Voulez-vous garder ce personnage ?**
+
+Deux choix :
+
+### GARDER
+
+Ajoute le personnage à la collection.
+
+### REJETER
+
+Le personnage disparaît.
+
+Pour le prototype, le joueur peut avoir un nombre suffisamment élevé de générations afin de tester rapidement.
+
+Ajouter également un bouton développeur :
+
+> **Générer 10 personnages**
+
+Cela permettra de tester rapidement les probabilités.
+
+---
+
+# 17. COLLECTION
+
+Créer une page Collection.
+
+Afficher tous les personnages possédés sous forme de cartes.
+
+Exemple :
+
+```text
+MES PERSONNAGES
+
+[ VARK ]
+Démon
+Arc
+Gravité
+★★★★☆
+Power 71
+
+[ LYRA ]
+Elfe
+Arc
+Foudre
+★★★☆☆
+Power 68
+
+[ X-17 ]
+Robot
+Pistolet
+Foudre
+★★★★★
+Power 83
+```
+
+Permettre de :
+
+* trier par rareté ;
+* trier par puissance ;
+* trier par vitesse ;
+* trier par date ;
+* filtrer par race ;
+* filtrer par pouvoir.
+
+---
+
+# 18. FICHE D'UN PERSONNAGE
+
+Cliquer sur un personnage ouvre sa fiche détaillée.
+
+Afficher :
+
+* nom ;
+* race ;
+* arme ;
+* pouvoir ;
+* rareté ;
+* statistiques ;
+* score ;
+* synergies ;
+* nombre de combats ;
+* victoires ;
+* défaites ;
+* taux de victoire.
+
+Exemple :
+
+```text
+VARK
+
+DÉMON
+ARC
+GRAVITÉ
+
+★★★★☆
+
+POWER 71
+
+❤️ 82
+⚔️ 76
+⚡ 51
+🛡️ 64
+
+SYNERGIES
+Archer naturel
+Affinité démoniaque
+
+COMBATS
+12
+
+VICTOIRES
+8
+
+DÉFAITES
+4
+
+[ COMBATTRE ]
+```
+
+---
+
+# 19. COMBAT
+
+Le combat doit être volontairement simple.
+
+Pas de déplacement.
+Pas de carte.
+Pas de système complexe.
+
+Deux personnages s'affrontent automatiquement.
+
+Exemple :
+
+```text
+        VARK
+
+        VS
+
+        X-17
+```
+
+Afficher les statistiques.
+
+Puis lancer le combat.
+
+---
+
+# 20. DÉROULEMENT DU COMBAT
+
+Le combat se déroule en plusieurs tours.
+
+Exemple :
+
+```text
+TOUR 1
+
+VARK attaque X-17
+→ 12 dégâts
+
+X-17 attaque VARK
+→ 8 dégâts
+
+TOUR 2
+
+VARK utilise GRAVITÉ
+→ X-17 perd 20% vitesse
+
+X-17 attaque
+→ 6 dégâts
+
+...
+```
+
+Le combat doit être animé progressivement.
+
+Chaque action doit être affichée dans un petit journal.
+
+Exemple :
+
+```text
+Vark attaque.
+X-17 perd 12 HP.
+
+X-17 contre-attaque.
+Vark perd 8 HP.
+
+Vark déclenche Gravité.
+X-17 est ralenti.
+```
+
+---
+
+# 21. SYSTÈME DE COMBAT
+
+Le système doit prendre en compte :
+
+* HP ;
+* Force ;
+* Défense ;
+* Vitesse ;
+* arme ;
+* pouvoir ;
+* synergies.
+
+La vitesse détermine qui agit en premier.
+
+La force détermine les dégâts de base.
+
+La défense réduit les dégâts.
+
+Les pouvoirs peuvent créer des effets secondaires.
+
+Créer un système simple et compréhensible.
+
+NE PAS créer un système mathématique extrêmement complexe.
+
+Le joueur doit pouvoir comprendre approximativement pourquoi il a gagné ou perdu.
+
+---
+
+# 22. CRITIQUEMENT IMPORTANT : PAS DE COMBAT PUREMENT RNG
+
+Le résultat ne doit pas être :
+
+```text
+random(0,100)
+```
+
+Le joueur doit pouvoir avoir l'impression que ses personnages ont réellement des caractéristiques.
+
+Il peut y avoir du hasard, mais :
+
+> un personnage nettement supérieur doit généralement gagner.
+
+Les synergies doivent permettre des retournements raisonnables.
+
+---
+
+# 23. COMBAT CONTRE UN AUTRE JOUEUR
+
+Pour le prototype, il n'est pas nécessaire d'avoir un véritable multijoueur temps réel.
+
+Créer un système simulant des adversaires.
+
+Par exemple :
+
+```text
+ADVERSAIRES
+
+[ Combattre ]
+
+Korr
+Power 72
+
+[ Combattre ]
+
+Lyra
+Power 75
+
+[ Combattre ]
+
+X-17
+Power 81
+```
+
+Les adversaires peuvent être des personnages générés automatiquement.
+
+Mais architecturer le système de manière à ce qu'un véritable joueur puisse être ajouté plus tard.
+
+---
+
+# 24. MODE "JOUEUR CONTRE JOUEUR"
+
+Prévoir conceptuellement deux modes :
+
+### Mode A — Combat rapide
+
+Tu choisis un personnage.
+
+Le jeu choisit un adversaire.
+
+Combat automatique.
+
+### Mode B — Défi
+
+Le joueur affronte un personnage appartenant à un autre joueur.
+
+Pour le prototype, ce deuxième mode peut être simulé avec des personnages prédéfinis ou générés.
+
+---
+
+# 25. POINTS
+
+Après chaque combat :
+
+Victoire :
+
+```text
++100 points
+```
+
+Défaite :
+
+```text
++25 points
+```
+
+Ajouter éventuellement un bonus en fonction de la difficulté.
+
+Exemple :
+
+```text
+Victoire
++100
+
+Adversaire plus puissant
++40 bonus
+
+Total
++140
+```
+
+---
+
+# 26. CLASSEMENT
+
+Créer un classement très simple.
+
+Exemple :
+
+```text
+CLASSEMENT
+
+1. Joueur A       4 820
+2. Joueur B       4 230
+3. Toi            3 910
+4. Joueur D       3 700
+```
+
+Pour le prototype, les autres joueurs peuvent être fictifs.
+
+Le but est simplement de tester si le système de points donne envie de jouer.
+
+---
+
+# 27. PERSONNAGE DU JOUR
+
+Créer une mécanique "Daily".
+
+Chaque jour, le joueur dispose d'une génération spéciale.
+
+Afficher :
+
+```text
+PERSONNAGE DU JOUR
+
+Une seule génération.
+
+[ LANCER LES ROUES ]
+
+Disponible dans :
+23h 14m
+```
+
+Pour le prototype local, ajouter un bouton :
+
+> RESET DAILY
+
+afin de pouvoir tester la mécanique.
+
+---
+
+# 28. GÉNÉRATION QUOTIDIENNE
+
+Le personnage quotidien doit être spécial.
+
+Il peut avoir :
+
+* une probabilité légèrement supérieure de rareté ;
+* une roue supplémentaire ;
+* une combinaison spéciale ;
+* un bonus de points ;
+* une caractéristique unique.
+
+Mais ne pas rendre cette mécanique trop complexe pour le moment.
+
+---
+
+# 29. COLLECTION ET VALEUR DES PERSONNAGES
+
+Chaque personnage doit avoir une valeur.
+
+Elle peut dépendre de :
+
+* rareté ;
+* puissance ;
+* synergies ;
+* combinaison ;
+* statistiques.
+
+Exemple :
+
+```text
+Valeur : 742
+```
+
+Cette valeur ne sert pas forcément à acheter quelque chose dans le prototype.
+
+Elle sert surtout à comparer les personnages.
+
+---
+
+# 30. OBJECTIF DU JOUEUR
+
+Le joueur doit progressivement chercher à :
+
+* avoir des personnages rares ;
+* trouver des combinaisons intéressantes ;
+* construire une collection ;
+* obtenir des personnages puissants ;
+* gagner des combats ;
+* accumuler des points ;
+* battre son meilleur score.
+
+Mais il ne doit PAS y avoir besoin d'une histoire.
+
+---
+
+# 31. PAS DE STORY MODE
+
+Ne créer :
+
+* aucune campagne ;
+* aucune narration complexe ;
+* aucun dialogue ;
+* aucune quête scénarisée.
+
+Le plaisir doit venir du système.
+
+---
+
+# 32. PROGRESSION
+
+Pour le prototype, créer simplement :
+
+```text
+Niveau du joueur
+
+Niveau 1
+0 XP
+
+Niveau 2
+500 XP
+
+Niveau 3
+1200 XP
+
+Niveau 4
+2500 XP
+```
+
+Gagner de l'XP avec :
+
+* génération ;
+* victoire ;
+* découverte d'une nouvelle combinaison ;
+* personnage rare.
+
+La progression doit être visible mais simple.
+
+---
+
+# 33. ACHIEVEMENTS SIMPLES
+
+Créer quelques objectifs.
+
+Exemples :
+
+> Première victoire
+
+> Première génération légendaire
+
+> 10 personnages collectés
+
+> 10 victoires
+
+> Découvrir 5 pouvoirs
+
+> Découvrir 10 synergies
+
+> Battre un personnage avec un Power supérieur
+
+Ces achievements servent à tester si la progression donne envie de continuer.
+
+---
+
+# 34. STATISTIQUES DU JOUEUR
+
+Afficher :
+
+```text
+PARTIES
+37
+
+VICTOIRES
+24
+
+DÉFAITES
+13
+
+PERSONNAGES
+18
+
+LÉGENDAIRES
+2
+
+SYNERGIES DÉCOUVERTES
+14 / 30
+
+MEILLEUR POWER
+91
+
+POINTS
+3 420
+```
+
+---
+
+# 35. OUTILS DE TEST
+
+C'est extrêmement important.
+
+Créer un petit panneau développeur accessible par exemple avec :
+
+```text
+[ DEV MODE ]
+```
+
+Il doit permettre :
+
+* générer 1 personnage ;
+* générer 10 personnages ;
+* générer 100 personnages ;
+* vider la collection ;
+* réinitialiser les points ;
+* réinitialiser le joueur ;
+* reset daily ;
+* créer un personnage avec statistiques maximales ;
+* créer un personnage légendaire ;
+* lancer un combat immédiatement ;
+* afficher les probabilités de génération.
+
+Cela permettra de tester rapidement les mécaniques.
+
+---
+
+# 36. SIMULATION DE 1000 PERSONNAGES
+
+Créer une fonctionnalité permettant de simuler 1000 générations.
+
+Afficher :
+
+```text
+STATISTIQUES DE GÉNÉRATION
+
+Commun       62.4%
+Rare         27.1%
+Épique        9.3%
+Légendaire    1.2%
+
+Race la plus fréquente :
+Humain
+
+Pouvoir le plus fréquent :
+Feu
+
+Combinaison la plus rare :
+Démon + Glace + Grimoire
+```
+
+Cette fonctionnalité est importante pour équilibrer les probabilités.
+
+---
+
+# 37. PROBABILITÉS
+
+Les roues doivent avoir des probabilités contrôlées.
+
+Ne pas rendre toutes les valeurs équiprobables si cela rend les résultats mauvais.
+
+Exemple :
+
+```text
+Commun       60%
+Rare         28%
+Épique       10%
+Légendaire    2%
+```
+
+Mais les valeurs doivent être facilement modifiables dans un seul fichier ou une configuration.
+
+---
+
+# 38. IDENTITÉ DU PERSONNAGE
+
+Chaque personnage doit avoir un identifiant unique.
+
+Exemple :
+
+```text
+character_id
+```
+
+Il doit également avoir :
+
+```text
+created_at
+owner_id
+race
+weapon
+power
+hp
+strength
+speed
+defense
+rarity
+score
+synergies
+wins
+losses
+```
+
+Même si le prototype n'utilise pas réellement de base de données, garder une structure d'objet propre.
+
+---
+
+# 39. SAUVEGARDE
+
+Pour le prototype :
+
+utiliser localStorage si nécessaire.
+
+Le joueur doit pouvoir :
+
+1. fermer la page ;
+2. revenir ;
+3. retrouver sa collection.
+
+Pas besoin de compte utilisateur.
+
+---
+
+# 40. RESPONSIVE
+
+Le prototype doit fonctionner au minimum :
+
+* desktop ;
+* tablette ;
+* mobile.
+
+Mais ne pas passer énormément de temps dessus.
+
+---
+
+# 41. INTERFACE MINIMALISTE
+
+Utiliser une structure très simple :
+
+```text
+┌─────────────────────────────────────┐
+│ WHEELBORN     1 240 pts     👤      │
+├─────────────────────────────────────┤
+│                                     │
+│        PERSONNAGE DU JOUR           │
+│                                     │
+│        [ GÉNÉRER ]                  │
+│                                     │
+├─────────────────────────────────────┤
+│                                     │
+│        DERNIERS PERSONNAGES         │
+│                                     │
+│   [card] [card] [card]              │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+Pas de sidebar compliquée.
+
+Pas de dashboard professionnel.
+
+Le jeu doit rester visuellement évident.
+
+---
+
+# 42. ANIMATIONS
+
+Utiliser uniquement quelques animations :
+
+### Roues
+
+Rotation / changement rapide des valeurs.
+
+### Personnage obtenu
+
+Petite animation d'apparition.
+
+### Combat
+
+Barres de vie qui diminuent.
+
+### Victoire
+
+Simple indication :
+
+> VICTOIRE
+
+### Défaite
+
+> DÉFAITE
+
+Pas besoin de particules complexes.
+
+---
+
+# 43. EXPÉRIENCE UTILISATEUR
+
+Le joueur doit pouvoir faire :
+
+```text
+ouvrir le site
+↓
+cliquer sur générer
+↓
+attendre quelques secondes
+↓
+voir son personnage
+↓
+le conserver
+↓
+aller dans collection
+↓
+choisir un personnage
+↓
+cliquer combattre
+↓
+voir le résultat
+```
+
+en moins de 2 minutes.
+
+---
+
+# 44. IMPORTANT : LE PROTOTYPE DOIT ÊTRE RAPIDE À TESTER
+
+Ajouter des boutons permettant de sauter les animations.
+
+Exemple :
+
+```text
+[ GÉNÉRER RAPIDEMENT ]
+```
+
+et :
+
+```text
+[ COMBAT INSTANTANÉ ]
+```
+
+Le joueur doit pouvoir tester :
+
+> génération → collection → combat
+
+très rapidement.
+
+---
+
+# 45. STRUCTURE DU CODE
+
+Même si le prototype est simple, séparer clairement :
+
+```text
+/data
+/generation
+/combat
+/collection
+/progression
+/ui
+/utils
+```
+
+Créer des fonctions indépendantes pour :
+
+```text
+generateCharacter()
+calculateStats()
+calculateRarity()
+calculateSynergies()
+calculatePower()
+simulateBattle()
+calculateRewards()
+saveCharacter()
+loadCollection()
+```
+
+Le système de combat ne doit pas être mélangé avec l'interface.
+
+Le système de génération ne doit pas être mélangé avec la collection.
+
+---
+
+# 46. SYSTÈME DE COMBAT REPRODUCTIBLE
+
+Pour faciliter les tests, permettre éventuellement de fournir une seed.
+
+Exemple :
+
+```text
+Seed : 12345
+```
+
+Cela permet de reproduire certains combats.
+
+Ce n'est pas obligatoire pour la première version mais recommandé si simple à mettre en place.
+
+---
+
+# 47. CE QU'IL NE FAUT PAS FAIRE
+
+NE PAS ajouter :
+
+* boutique ;
+* microtransactions ;
+* publicité ;
+* système de guilde ;
+* chat ;
+* amis ;
+* matchmaking complexe ;
+* inventaire compliqué ;
+* équipements évolutifs ;
+* crafting complexe ;
+* histoire ;
+* missions complexes ;
+* carte du monde ;
+* centaines de personnages pré-écrits ;
+* système de niveaux des armes ;
+* système de ressources complexe.
+
+Tout cela pourra éventuellement exister dans une version future.
+
+Pour ce prototype :
+
+> **GÉNÉRER → COLLECTIONNER → COMBATTRE → GAGNER DES POINTS.**
+
+---
+
+# 48. QUESTION À TESTER
+
+Le prototype doit permettre de répondre à ces questions :
+
+### Génération
+
+Est-ce amusant de regarder les roues tourner ?
+
+Est-ce amusant de découvrir le personnage final ?
+
+Est-ce que les combinaisons donnent envie d'en générer un autre ?
+
+### Collection
+
+Est-ce que le joueur a envie de conserver certains personnages ?
+
+Est-ce qu'il commence à comparer ses personnages ?
+
+Est-ce que la rareté donne envie de recommencer ?
+
+### Combat
+
+Est-ce que le joueur comprend pourquoi un personnage gagne ?
+
+Est-ce qu'il a envie de choisir son personnage plutôt que de simplement utiliser le plus puissant ?
+
+### Progression
+
+Est-ce que gagner des points donne envie de continuer ?
+
+Est-ce que le personnage quotidien donne envie de revenir ?
+
+### Rejouabilité
+
+Après avoir généré 10 personnages, est-ce que le joueur a encore envie d'en générer ?
+
+---
+
+# 49. PRIORITÉ DE DÉVELOPPEMENT
+
+Développer dans cet ordre précis :
+
+## PHASE 1
+
+Génération d'un personnage.
+
+## PHASE 2
+
+Rareté + statistiques + synergies.
+
+## PHASE 3
+
+Collection.
+
+## PHASE 4
+
+Combat automatique.
+
+## PHASE 5
+
+Points + progression.
+
+## PHASE 6
+
+Personnage quotidien.
+
+## PHASE 7
+
+Statistiques + classement fictif.
+
+## PHASE 8
+
+Dev mode + simulation de masse.
+
+## PHASE 9
+
+Polissage minimal de l'interface.
+
+Ne pas passer à la phase suivante si la précédente ne fonctionne pas correctement.
+
+---
+
+# 50. LIVRABLE FINAL
+
+À la fin, je dois pouvoir :
+
+1. ouvrir le prototype ;
+2. générer un personnage ;
+3. voir les roues produire ses caractéristiques ;
+4. voir ses statistiques ;
+5. voir ses synergies ;
+6. voir sa rareté ;
+7. décider de le conserver ;
+8. retrouver le personnage dans ma collection ;
+9. choisir deux personnages ;
+10. lancer un combat ;
+11. voir le combat se dérouler ;
+12. obtenir une victoire ou une défaite ;
+13. gagner des points ;
+14. générer plusieurs personnages ;
+15. tester le personnage quotidien ;
+16. consulter mes statistiques ;
+17. simuler de nombreuses générations ;
+18. réinitialiser complètement la partie.
+
+---
+
+# 51. PHILOSOPHIE GÉNÉRALE
+
+Le prototype doit privilégier une sensation :
+
+> **"Je veux juste en générer un autre pour voir ce que je vais obtenir."**
+
+Puis :
+
+> **"Attends, celui-là est vraiment bon."**
+
+Puis :
+
+> **"Je vais essayer de le faire combattre."**
+
+Puis :
+
+> **"Il a perdu... il m'en faut un meilleur."**
+
+Et enfin :
+
+> **"Demain je reviendrai voir ce que la roue me donne."**
+
+C'est cette boucle qui doit être testée.
+
+Ne cherche pas à rendre le projet artificiellement complexe.
+
+Une mécanique simple mais amusante vaut mieux que 20 mécaniques moyennes.
+
+---
+
+# 52. IMPORTANT POUR LE DÉVELOPPEMENT
+
+Avant de coder une fonctionnalité, demande-toi :
+
+> Est-ce que cette fonctionnalité permet de tester une hypothèse importante du jeu ?
+
+Si non, ne l'implémente pas.
+
+Le but est de tester le GAMEPLAY, pas de construire le produit final.
+
+À la fin du développement, explique brièvement :
+
+* comment fonctionne la génération ;
+* comment fonctionne le calcul des statistiques ;
+* comment fonctionne la rareté ;
+* comment fonctionnent les synergies ;
+* comment fonctionne le combat ;
+* comment fonctionne la progression ;
+* où modifier les probabilités ;
+* où ajouter de nouvelles races ;
+* où ajouter de nouvelles armes ;
+* où ajouter de nouveaux pouvoirs ;
+* où modifier les règles de combat.
+
+Le code doit être suffisamment clair pour qu'un développeur puisse ensuite reprendre les mécaniques et les porter dans Laravel + Livewire.

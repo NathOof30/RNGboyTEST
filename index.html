@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WHEELBORN — Prototype Jouable (RNG, Collection & Combats)</title>
+  <meta name="description" content="Prototype jouable basé sur la génération procédurale par roues, synergies, rareté et combats automatiques.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <!-- EN-TÊTE PRINCIPAL (Section 5) -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="logo-block" id="nav-logo">
+        <span class="logo-icon">🎡</span>
+        <h1 class="logo-title">WHEELBORN</h1>
+      </div>
+
+      <div class="player-badges">
+        <div class="stat-chip">
+          <span>👥 Personnages :</span>
+          <span class="chip-val" id="header-char-count">0</span>
+        </div>
+        <div class="stat-chip chip-gold">
+          <span>🪙 Points :</span>
+          <span class="chip-val" id="header-points">0</span>
+        </div>
+        <div class="stat-chip">
+          <span>⭐ Niv. :</span>
+          <span class="chip-val" id="header-level">1</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-sm btn-outline" id="btn-toggle-sound" title="Activer / Couper les sons">
+          🔊 Son
+        </button>
+        <button class="btn btn-sm btn-outline" id="btn-open-dev" title="Outils de test et simulateur">
+          🛠️ Dev Mode
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVIGATION PAR ONGLETS (Section 5, 27, 26, 34) -->
+  <nav class="app-nav">
+    <div class="nav-container">
+      <button class="nav-btn active" data-target="view-generator">
+        🎰 Générer
+      </button>
+      <button class="nav-btn" data-target="view-collection">
+        📜 Collection <span class="badge-pill" id="nav-coll-badge">0</span>
+      </button>
+      <button class="nav-btn" data-target="view-combat">
+        ⚔️ Combat
+      </button>
+      <button class="nav-btn" data-target="view-daily">
+        ✨ Quotidien <span class="badge-pill" id="nav-daily-badge">Prêt</span>
+      </button>
+      <button class="nav-btn" data-target="view-leaderboard">
+        🏆 Classement
+      </button>
+      <button class="nav-btn" data-target="view-stats">
+        📊 Stats & Succès
+      </button>
+    </div>
+  </nav>
+
+  <!-- CONTENEUR DES VUES -->
+  <main class="main-content">
+    <section id="view-generator" class="view-section active"></section>
+    <section id="view-collection" class="view-section"></section>
+    <section id="view-combat" class="view-section"></section>
+    <section id="view-daily" class="view-section"></section>
+    <section id="view-leaderboard" class="view-section"></section>
+    <section id="view-stats" class="view-section"></section>
+  </main>
+
+  <!-- CONTENEUR DEV MODE MODAL -->
+  <div id="dev-ui-container"></div>
+
+  <!-- SCRIPT PRINCIPAL -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
