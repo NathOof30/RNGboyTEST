@@ -9,6 +9,7 @@
  */
 
 import { GAME_CONFIG } from "../data/config.js";
+import { collectionManager } from "../collection/collectionManager.js";
 
 const PROGRESSION_KEY = "wheelborn_progression";
 
@@ -341,6 +342,39 @@ export class ProgressionManager {
     return entries.map((entry, index) => ({ rank: index + 1, ...entry }));
   }
 
+  // Synchronise les éléments découverts à partir de la collection actuelle et des générations
+  syncDiscoveredElements() {
+    if (!this.state.stats) {
+      this.state.stats = this.getDefaultState().stats;
+    }
+    if (!Array.isArray(this.state.stats.discoveredSynergies)) {
+      this.state.stats.discoveredSynergies = [];
+    }
+    if (!Array.isArray(this.state.stats.discoveredPowers)) {
+      this.state.stats.discoveredPowers = [];
+    }
+
+    const chars = collectionManager.getAll();
+    let updated = false;
+
+    for (const c of chars) {
+      if (c.powerId && !this.state.stats.discoveredPowers.includes(c.powerId)) {
+        this.state.stats.discoveredPowers.push(c.powerId);
+        updated = true;
+      }
+      for (const syn of c.synergies || []) {
+        if (syn.id && !this.state.stats.discoveredSynergies.includes(syn.id)) {
+          this.state.stats.discoveredSynergies.push(syn.id);
+          updated = true;
+        }
+      }
+    }
+
+    if (updated) {
+      this.saveState();
+    }
+  }
+
   // --- SUCCÈS (Section 33) ---
 
   getAchievementsList() {
@@ -357,14 +391,14 @@ export class ProgressionManager {
         title: "Bénédiction du Destin",
         description: "Obtenir un personnage de rareté Légendaire.",
         icon: "🌟",
-        check: () => this.state.stats.legendariesCount >= 1,
+        check: () => this.state.stats.legendariesCount >= 1 || collectionManager.getAll().some(c => c.rarity === "legendary"),
       },
       {
         id: "ten_characters",
         title: "Collectionneur Émergent",
         description: "Avoir collecté au moins 10 personnages.",
         icon: "👥",
-        check: (char, collSize) => (collSize || 0) >= 10,
+        check: () => collectionManager.getAll().length >= 10,
       },
       {
         id: "ten_wins",
@@ -378,14 +412,14 @@ export class ProgressionManager {
         title: "Maître des Éléments",
         description: "Découvrir 5 pouvoirs distincts.",
         icon: "🔮",
-        check: () => this.state.stats.discoveredPowers.length >= 5,
+        check: () => (this.state.stats.discoveredPowers || []).length >= 5 || new Set(collectionManager.getAll().map(c => c.powerId)).size >= 5,
       },
       {
         id: "ten_synergies",
         title: "Alchimiste Tactique",
         description: "Découvrir 10 synergies différentes.",
         icon: "⚡",
-        check: () => this.state.stats.discoveredSynergies.length >= 10,
+        check: () => (this.state.stats.discoveredSynergies || []).length >= 10,
       },
       {
         id: "giant_slayer",
@@ -404,20 +438,23 @@ export class ProgressionManager {
     ];
   }
 
-  checkAchievements(playerChar, oppChar, isWin, collectionSize = 0) {
+  checkAchievements(playerChar = null, oppChar = null, isWin = false) {
+    this.syncDiscoveredElements();
     const list = this.getAchievementsList();
     const newlyUnlocked = [];
 
     for (const ach of list) {
       if (!this.state.unlockedAchievements[ach.id]) {
         try {
-          if (ach.check(playerChar, oppChar, isWin, collectionSize)) {
+          if (ach.check(playerChar, oppChar, isWin)) {
             this.state.unlockedAchievements[ach.id] = new Date().toISOString();
             this.addPoints(50);
             this.addXP(100);
             newlyUnlocked.push(ach);
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error("Erreur vérification succès", ach.id, e);
+        }
       }
     }
 

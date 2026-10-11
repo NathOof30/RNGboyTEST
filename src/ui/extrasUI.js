@@ -93,6 +93,9 @@ export function renderLeaderboardView(container) {
 }
 
 export function renderStatsView(container) {
+  // Synchronise et évalue immédiatement tous les critères de succès
+  progressionManager.checkAchievements();
+
   const stats = progressionManager.state.stats;
   const lvlInfo = progressionManager.getCurrentLevelInfo();
   const achievements = progressionManager.getAchievementsList();
