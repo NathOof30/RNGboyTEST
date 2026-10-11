@@ -1,6 +1,6 @@
 # 📜 WHEELBORN (RNGboy) — Document de Game Design & Spécifications Techniques
 
-> **Version :** 1.0.0  
+> **Version :** 2.0.0 (Évolution Gameplay : Micro-sessions, Jauge de Chance, Recyclage & Atelier)  
 > **Statut :** Prototype de validation gameplay (Vite/JS) en vue d'un portage **Laravel 11 + Livewire 3 + Tailwind CSS**  
 > **Auteur :** Équipe de conception & Développement  
 
@@ -10,51 +10,51 @@
 
 1. [Vision Globale & Objectifs](#1-vision-globale--objectifs)
 2. [Game Design Document (GDD)](#2-game-design-document-gdd)
-   - [2.1. Boucle de Jeu Principale (Core Loop)](#21-boucle-de-jeu-principale-core-loop)
+   - [2.1. Boucle de Jeu Principale (Core Loop V2)](#21-boucle-de-jeu-principale-core-loop-v2)
    - [2.2. Les Piliers de la Génération : Roues & Caractéristiques](#22-les-piliers-de-la-génération--roues--caractéristiques)
    - [2.3. Formules Mathématiques des Statistiques & Score Power](#23-formules-mathématiques-des-statistiques--score-power)
-   - [2.4. Système de Rareté & Scarcity](#24-système-de-rareté--scarcity)
+   - [2.4. Système de Rareté, Tiers de Pouvoirs & Super Spin](#24-système-de-rareté-tiers-de-pouvoirs--super-spin)
    - [2.5. Catalogue des Synergies & Combinaisons Instables](#25-catalogue-des-synergies--combinaisons-instables)
-   - [2.6. Régulation des Tirages & Invocations](#26-régulation-des-tirages--invocations)
+   - [2.6. Régulation des Invocations, Jauge de Chance (10/10) & Recyclage](#26-régulation-des-invocations-jauge-de-chance-1010--recyclage)
    - [2.7. Moteur de Combat Tour par Tour](#27-moteur-de-combat-tour-par-tour)
-   - [2.8. Matchmaking, Arène & Pool Communautaire](#28-matchmaking-arène--pool-communautaire)
-   - [2.9. Progression, Succès & Classement](#29-progression-succès--classement)
+   - [2.8. Tickets d'Arène, Matchmaking & Formule ÉLO FIDE](#28-tickets-darène-matchmaking--formule-élo-fide)
+   - [2.9. Les 5 Ligues Compétitives & Récompenses](#29-les-5-ligues-compétitives--récompenses)
+   - [2.10. L'Atelier (Workshop) & Économie Circulaire des Pièces](#210-latelier-workshop--économie-circulaire-des-pièces)
 3. [Système Visuel Futur : Moteur d'Assemblage Modulaire d'Assets](#3-système-visuel-futur--moteur-dassemblage-modulaire-dassets)
    - [3.1. Approche "Paper Doll" / Calques d'Assets](#31-approche-paper-doll--calques-dassets)
    - [3.2. Hiérarchie des Couches Graphiques](#32-hiérarchie-des-couches-graphiques)
    - [3.3. Pipeline d'Intégration](#33-pipeline-dintégration)
 4. [Architecture Technique du Prototype Actuel (JavaScript)](#4-architecture-technique-du-prototype-actuel-javascript)
    - [4.1. Cartographie des Fichiers & Rôles](#41-cartographie-des-fichiers--rôles)
-   - [4.2. Schéma de Données (JSON Models)](#42-schéma-de-données-json-models)
+   - [4.2. Schéma de Données (JSON Models V2)](#42-schéma-de-données-json-models-v2)
    - [4.3. Déterminisme & Reproductibilité (PRNG)](#43-déterminisme--reproductibilité-prng)
 5. [Spécifications pour le Portage Laravel + Livewire + Tailwind](#5-spécifications-pour-le-portage-laravel--livewire--tailwind)
-   - [5.1. Schéma de Base de Données (Migrations & Modèles Eloquent)](#51-schéma-de-base-de-données-migrations--modèles-eloquent)
+   - [5.1. Schéma de Base de Données (Migrations & Modèles Eloquent V2)](#51-schéma-de-base-de-données-migrations--modèles-eloquent-v2)
    - [5.2. Services Métiers PHP Purs](#52-services-métiers-php-purs)
    - [5.3. Découpage des Composants Livewire 3 + Alpine.js](#53-découpage-des-composants-livewire-3--alpinejs)
    - [5.4. Charte Graphique & Tokens Tailwind CSS](#54-charte-graphique--tokens-tailwind-css)
 6. [Audit Critique & Pistes d'Amélioration Gameplay](#6-audit-critique--pistes-damélioration-gameplay)
-   - [6.1. Points Forts du Prototype](#61-points-forts-du-prototype)
-   - [6.2. Limites Identifiées & Axes d'Équilibrage](#62-limites-identifiées--axes-déquilibrage)
-   - [6.3. Idées d'Itérations Immédiates](#63-idées-ditérations-immédiates)
+   - [6.1. Bilan des Améliorations de la V2](#61-bilan-des-améliorations-de-la-v2)
+   - [6.2. Axes Futurs de Rétention & Équilibrage](#62-axes-futurs-de-rétention--équilibrage)
 
 ---
 
 ## 1. Vision Globale & Objectifs
 
 ### 1.1. Philosophie du Projet
-**WHEELBORN** est un jeu hybride combinant :
-- L'excitation de l'invocation aléatoire (style *Gacha / Slot Machine*) ;
-- La collection stratégique de cartes et l'évaluation de profils d'attributs ;
-- La découverte de combinaisons secrètes et de synergies thématiques ;
-- Des combats automatiques tactiques (autobattler 1v1) fondés sur les stats et passifs, sans être une simple loterie binaire ;
-- Une économie et une régulation du temps créant de la rareté et du désir.
+**WHEELBORN** est calibré pour des **micro-sessions intenses et gratifiantes de 5 à 10 minutes** :
+- **L'excitation de la génération aléatoire** : Le tirage des rouleaux (Race, Arme, Pouvoir) est le cœur battant du jeu, conçu pour susciter une curiosité permanente sur les synergies et les statistiques.
+- **Régulation naturelle et envie de revenir** : Un stock rapide de 3 invocations se rechargeant en quelques minutes (1 charge / 4 min) évite le clic compulsif infini et maximise le plaisir de chaque session.
+- **Jauge de Chance (Pity System 10/10)** : Chaque 10ème tirage garantit un *Super Spin* d'élite, remplaçant avantageusement l'ancien spin quotidien par un objectif continu et mesurable.
+- **Économie circulaire fermée** : Tout personnage indésirable est recyclé en Pièces d'Or 🪙. Ces pièces sont ensuite réinvesties dans l'**Atelier** pour débloquer des améliorations permanentes.
+- **Compétition équilibrée** : Des tickets d'arène (5 max, 1 / 5 min) canalisent le farm, et un classement officiel fondé sur la formule **Élo FIDE** répartit les joueurs en 5 Ligues de prestige.
 
 ### 1.2. Rôle du Prototype Actuel
 Ce projet en JavaScript natif (avec Vite) sert de **bac à sable fonctionnel**. Son rôle est de valider mathématiquement et ludiquement :
-1. La sensation de tirage des roues (satisfaction, suspense, lisibilité) ;
-2. La viabilité de l'équilibrage des statistiques et du score Power ;
-3. La pertinence tactique des synergies en combat ;
-4. Le cycle de rétention du joueur (tirages réguliers, combats, classement).
+1. La sensation de tirage des roues (satisfaction, suspense, lisibilité, impact du Super Spin) ;
+2. La viabilité de l'équilibrage des statistiques, des tiers de pouvoirs et du score Power ;
+3. La pertinence tactique des synergies en combat et le calibrage de l'Élo ;
+4. Le cycle de rétention du joueur (sessions de 5-10 min, recyclage, dépenses à l'Atelier).
 
 Une fois validé et ajusté, l'ensemble des règles sera migré vers une application web robuste sous **Laravel 11 + Livewire 3 + Tailwind CSS**, avec persistance en base relationnelle, multijoueur asynchrone réel et moteur de rendu visuel par assets superposés.
 
@@ -62,20 +62,23 @@ Une fois validé et ajusté, l'ensemble des règles sera migré vers une applica
 
 ## 2. Game Design Document (GDD)
 
-### 2.1. Boucle de Jeu Principale (Core Loop)
+### 2.1. Boucle de Jeu Principale (Core Loop V2)
 
 ```mermaid
 graph TD
-    A[🎟️ Dépense d'Invocation] --> B[🎰 Lancement des Roues : Race, Arme, Pouvoir]
-    B --> C[✨ Révélation de la Carte & Calcul des Synergies]
-    C --> D{⚖️ Décision du Joueur}
-    D -->|Conserver| E[📥 Ajout à la Collection & Enregistrement Arène]
-    D -->|Rejeter| F[🗑️ Recyclage / Perte]
-    E --> G[⚔️ Entrée dans l'Arène de Combat]
-    G --> H[🏆 Victoire / Défaite & Récompenses Points/XP]
-    H --> I[📈 Montée de Niveau, Succès, Titres & Classement]
-    I --> J[⏳ Attente recharge horaire ou Daily Spin]
-    J --> A
+    A[🎟️ Invocations Rapides : 3 max, 1 recharge / 4 min] --> B[🎰 Lancement des Roues : Race, Arme, Pouvoir]
+    B --> C[✨ Révélation, Synergies & Progression Jauge de Chance]
+    C -->|Tirages 1 à 9| D{⚖️ Décision du Joueur}
+    C -->|10ème Tirage| P[🌟 SUPER SPIN : 0% Commun, Rareté & Pouvoir Boostés]
+    P --> D
+    D -->|Conserver| E[📥 Ajout Collection & Roster Arène]
+    D -->|Recycler| F[🪙 Conversion immédiate en Pièces d'Or]
+    E --> G[⚔️ Arène de Duel : 5 Tickets max, 1 recharge / 5 min]
+    G --> H[🏆 Victoire / Défaite : Pièces d'Or & Points ÉLO FIDE]
+    H --> L[🎖️ Progression dans les 5 Ligues ÉLO]
+    F --> W[🏛️ Dépense à l'Atelier d'Améliorations]
+    H --> W
+    W -->|Aimant Rareté / Forge Héros / Prime Arène / Spins Urgence| A
 ```
 
 ### 2.2. Les Piliers de la Génération : Roues & Caractéristiques
@@ -147,21 +150,30 @@ $$\text{Stat Finale} = \text{Base} + \text{Mod Race} + \text{Mod Arme} + \text{B
 Le score Power résume l'efficacité martiale du personnage sur une échelle normalisée (environ 40 à 98) :
 $$\text{Power} = \text{Arrondi}\Big((\text{Force} \times 0.32) + (\text{PV} \times 0.24) + (\text{Défense} \times 0.24) + (\text{Vitesse} \times 0.20) + (\text{Nb Synergies} \times 3) + (\text{Bonus Instable } ?\ 2 : 0)\Big)$$
 
-#### 4. Estimation de Valeur Marchande / Prestige
-$$\text{Valeur (Coins)} = \text{Arrondi}\Big(\big((\text{Power} \times 8) + (\text{Synergies} \times 45) + (\text{Victoires} \times 15) + (\text{Instable } ?\ 60 : 0)\big) \times \text{Multiplicateur Rareté}\Big)$$
+#### 4. Recyclage Systématique en Pièces d'Or (Économie V2)
+Tout personnage rejeté ou libéré de la collection est immédiatement converti en **Pièces d'Or 🪙** :
+$$\text{Pièces de Recyclage} = \max\Big(35,\ \text{Arrondi}\Big(\big((\text{Power} \times 1.2) + (\text{Nb Synergies} \times 25)\big) \times \text{Multiplicateur Rareté}\Big)\Big)$$
 
 ---
 
-### 2.4. Système de Rareté & Scarcity
+### 2.4. Système de Rareté, Tiers de Pouvoirs & Super Spin
 
-La rareté suit une véritable logique de collection. Les raretés légendaires ne doivent pas être banales.
+#### A. Hiérarchisation des Pouvoirs par Tiers de Rareté
+Les 8 pouvoirs sont classés en trois tiers d'accès distincts pour créer un gradient d'excitation :
+- **Pouvoirs Communs (~60% d'apparition)** : Feu 🔥, Glace ❄️, Poison 🧪, Régénération 🌿
+- **Pouvoirs Rares (~28% d'apparition)** : Foudre ⚡, Invisibilité 👤
+- **Pouvoirs Mythiques (~12% d'apparition)** : Gravité 🌌, Téléportation 🌀
 
-| Rareté | Étoiles | Couleur | Mult. Valeur | Taux Standard | Taux Quotidien (Daily) |
+#### B. Table des Probabilités : Tirage Standard vs Super Spin (Pity 10/10)
+La rareté suit une véritable rareté pyramidale, magnifiée tous les 10 tirages par le **Super Spin garanti** :
+
+| Rareté | Étoiles | Couleur | Mult. Recyclage | Tirage Standard | Super Spin (10ème tirage) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Commun** | ★☆☆☆☆ | Gris ardoise (`#94a3b8`) | $\times 1.00$ | **72 %** | **48 %** |
-| **Rare** | ★★☆☆☆ | Bleu cyan (`#38bdf8`) | $\times 1.15$ | **21 %** | **34 %** |
-| **Épique** | ★★★☆☆ | Violet mystique (`#c084fc`)| $\times 1.30$ | **6 %** | **14 %** |
-| **Légendaire** | ★★★★★ | Or incandescent (`#fbbf24`)| $\times 1.50$ | **1.0 %** | **4.0 %** |
+| **Commun** | ★☆☆☆☆ | Gris ardoise (`#94a3b8`) | $\times 1.00$ | **72 %** | **0 % (Garanti exclu)** |
+| **Rare** | ★★☆☆☆ | Bleu cyan (`#38bdf8`) | $\times 1.15$ | **21 %** | **60 %** |
+| **Épique** | ★★★☆☆ | Violet mystique (`#c084fc`)| $\times 1.30$ | **6 %** | **30 %** |
+| **Légendaire** | ★★★★★ | Or incandescent (`#fbbf24`)| $\times 1.50$ | **1.0 %** | **10.0 % ($\times 10$ !)** |
+| *Pouvoir garanti* | — | — | — | Tout pouvoir | **Rare ou Mythique garanti** |
 
 *Règle d'ajustement de cohérence :* Si un personnage génère un Power $\ge 86$ avec au moins 2 synergies mais a tiré un ticket Commun, il est promu automatiquement au rang *Rare* (et au rang *Épique* si Power $\ge 95$).
 
@@ -193,12 +205,17 @@ Le jeu intègre **16 synergies uniques** qui récompensent les associations coh�
 
 ---
 
-### 2.6. Régulation des Tirages & Invocations
+### 2.6. Régulation des Invocations, Jauge de Chance (10/10) & Recyclage
 
-Pour prévenir la lassitude du "clic infini" et créer de la valeur émotionnelle autour de chaque personnage :
-1. **Charges Horaires :** Le joueur dispose d'une réserve de **2 charges maximum**. Une charge se régénère toutes les **60 minutes** (3 600 secondes).
-2. **Personnage du Jour (Daily) :** Un tirage d'élite disponible toutes les **24 heures**, offrant un taux de Légendaires quadruplé (4%) et un don immédiat de **+200 Points**.
-3. **Capacité de Collection :** Limitée à **150 personnages**, forçant à arbitrer entre garder, remplacer ou recycler.
+Pour rythmer l'expérience en sessions courtes (5 à 10 minutes) sans frustration :
+1. **Invocations Rapides (Micro-sessions) :** Réserve limitée à **3 charges maximum**. Une charge se régénère automatiquement toutes les **4 minutes** (240 secondes).
+2. **Jauge de Chance (Pity System 10/10) :**
+   - Chaque tirage standard ($< 10$) génère une carte standard puis ajoute $+1$ à la jauge ($0 \to 10$).
+   - Lorsque la jauge atteint **10/10**, le bouton s'illumine en or (`🌟 LANCER LE SUPER SPIN`).
+   - Au lancement du tirage à 10/10, l'effet **Super Spin garanti** est appliqué (0% commun, rareté boostée, pouvoir rare ou mythique obligatoire).
+   - Dès la carte Super Spin reçue et révélée, la jauge est réinitialisée à **0/10**.
+   - Cette jauge remplace définitivement l'ancien bonus journalier par un sentiment de progression permanent et prévisible.
+3. **Recyclage Immédiat :** Le bouton "Jeter / Supprimer" est banni. Tout personnage non retenu est converti en Pièces d'Or pour alimenter l'Atelier.
 
 ---
 
@@ -227,35 +244,57 @@ sequenceDiagram
 #### Formule de Dégâts de Base
 $$\text{Dégâts Bruts} = \max\Big(5,\ (0.75 \times \text{Force}_{\text{attaquant}} - 0.38 \times \text{Défense}_{\text{défenseur}}) + \text{Aléatoire}(-3, +3)\Big) \times \text{Multiplicateurs}$$
 
-- **Initiative :** Calculée dynamiquement à chaque tour en comparant la vitesse actuelle. Un combattant affecté par un gel ou un ralentissement peut perdre l'initiative au cours du match.
+- **Initiative :** Calculée dynamiquement à chaque tour en comparant la vitesse actuelle.
 - **Boucliers :** Absorbent les dégâts avant que les PV ne soient entamés.
 - **Contrôles de foule :** L'étourdissement du Marteau ou le gel complet neutralisent l'action du tour.
 
 ---
 
-### 2.8. Matchmaking, Arène & Pool Communautaire
+### 2.8. Tickets d'Arène, Matchmaking & Formule ÉLO FIDE
 
-Pour rendre les combats stimulants :
-1. **Priorité aux Cartes des Vrais Joueurs :** Dès qu'un joueur sauvegarde un personnage, il est injecté dans le pool communautaire (avec nom de créateur `👤 MonPseudo`).
-2. **Matchmaking par Tranche de Power :** Le système recherche un adversaire ayant un écart de Power de $\pm 10$ points pour garantir des duels disputés.
-3. **Bots d'Arène de Secours :** Si aucune carte joueur n'est disponible dans la tranche, un combattant fictif d'arène (`🤖 Bot Arène`) est généré à la volée.
-4. **Trois Modes de Combat :**
-   - **Mode Rapide :** Matchmaking direct contre un rival équilibré.
-   - **Défis d'Arène :** Choix parmi 3 adversaires (Facile, Équilibré, Boss Redoutable avec multiplicateur de récompense).
-   - **Duel Collection :** Fait s'affronter deux cartes du même joueur pour tester laquelle est la plus puissante.
+#### A. Tickets d'Arène (Régulation anti-farm)
+- Stock limité à **5 tickets maximum**.
+- Recharge automatique de **1 ticket toutes les 5 minutes** (300 secondes).
+- Cela canalise les sessions et pousse le joueur à alterner entre invocations, tri de cartes et duels.
+
+#### B. Véritable Formule Élo Officielle (FIDE)
+Pour un classement mathématiquement équitable et compétitif, le système applique la formule internationale :
+$$E_{\text{joueur}} = \frac{1}{1 + 10^{(R_{\text{adversaire}} - R_{\text{joueur}}) / 400}}$$
+$$\Delta \text{Élo} = \text{Arrondi}\Big(K \times (S - E_{\text{joueur}})\Big) \quad \text{avec } K = 32 \text{ et } S \in \{1 \text{ (Victoire)}, 0 \text{ (Défaite)}\}$$
+
+- Si un joueur à 1000 Élo bat un Boss à 1200 Élo, il gagne $+24$ Élo.
+- S'il perd contre un adversaire à 800 Élo, il perd $-24$ Élo.
 
 ---
 
-### 2.9. Progression, Succès & Classement
+### 2.9. Les 5 Ligues Compétitives & Récompenses
 
-- **Gains de Points :**
-  - Victoire : $+100$ points (majoré d'un bonus *Underdog* si l'adversaire avait un Power supérieur : $\Delta \text{Power} \times 4$).
-  - Défaite : $+25$ points d'encouragement.
-  - Quotidien : $+200$ points.
-- **Niveaux & XP :** 7 paliers menant du statut d'*Apprenti des Roues* à *Légende du Destin*.
-- **Succès Déblocables (8) :**
-  - *Premier Sang*, *Maître des Combats* (10 victoires), *Collectionneur Novice* (10 cartes), *Découvreur de Synergies*, *Béni des Dieux* (Carte Légendaire), *Tueur de Colosse* (vaincre un rival avec +12 Power), *Instabilité Chimique* (activer une combinaison instable), *Grand Champion* (Niveau 5).
-- **Classement Dynamique :** Tableau affichant les rivaux et intégrant le joueur en temps réel selon son total de points.
+Tous les joueurs et bots d'arène sont répartis dans **5 Ligues officielles** :
+
+| Ligue | Badge | Tranche ÉLO | Rôle & Prestige |
+| :--- | :---: | :---: | :--- |
+| **Bronze** | 🥉 | 0 – 999 | Débutants et nouveaux guerriers |
+| **Argent** | 🥈 | 1 000 – 1 199 | Rang de départ officiel (1 000 Élo) |
+| **Or** | 🥇 | 1 200 – 1 399 | Combattants aguerris aux synergies rodées |
+| **Platine** | 💎 | 1 400 – 1 599 | Élite de l'Arène |
+| **Maître** | 👑 | 1 600+ | Légendes incontestées de Wheelborn |
+
+#### Récompenses de Duel :
+- **Victoire :** $+75$ Pièces de base (amplifié par l'Atelier) + bonus contre adversaire à Élo supérieur + $50$ XP.
+- **Défaite :** $+20$ Pièces d'encouragement + $15$ XP.
+
+---
+
+### 2.10. L'Atelier (Workshop) & Économie Circulaire des Pièces
+
+L'Atelier remplace l'ancien onglet journalier et boucle l'économie du jeu en permettant de réinvestir ses Pièces d'Or dans des bonus permanents :
+
+| Amélioration | Niveaux | Coûts (Pièces 🪙) | Effet Permanent |
+| :--- | :---: | :---: | :--- |
+| **Aimant à Rareté** | 5 | 250 / 600 / 1200 / 2500 / 5000 | Augmente les chances de base d'obtenir des cartes Rares (+3% à +15%), Épiques et Légendaires (+0.2% à +1.0%). |
+| **Forge des Héros** | 5 | 300 / 750 / 1500 / 3000 / 6000 | Rehausse le plancher de statistiques de base de tous les personnages générés (+2 à +12 min stats). |
+| **Prime d'Arène** | 4 | 200 / 500 / 1000 / 2000 | Multiplicateur sur les gains de pièces en arène ($\times 1.15$, $\times 1.30$, $\times 1.50$, $\times 1.75$). |
+| **Invocation d'Urgence** | Journalier | 150 pièces / invocation | Recharge immédiate d'1 charge de spin (limité à 2 achats par jour). |
 
 ---
 
@@ -321,36 +360,36 @@ c:\Users\natha\Documents\PROJET\RNGboy\
     ├── main.js                  # Point d'entrée, cycle de vie, routage par onglets
     ├── style.css                # Design system complet (thème sombre, néon, animations)
     ├── data/
-    │   ├── config.js            # Table de probabilités, paramètres d'énergie et XP
+    │   ├── config.js            # Configuration V2 : énergies, pity, tiers de pouvoirs, ligues Élo, atelier
     │   ├── races.js             # Objets des 8 races et modificateurs
     │   ├── weapons.js           # Objets des 8 armes et effets tactiques
-    │   ├── powers.js            # Objets des 8 pouvoirs et DoT/HoT
+    │   ├── powers.js            # Objets des 8 pouvoirs, tiers (commun/rare/mythique) et DoT/HoT
     │   ├── synergies.js         # Conditions et bonus des 16 synergies
     │   └── names.js             # Générateur procédural de noms
     ├── utils/
     │   ├── random.js            # Algorithme PRNG Mulberry32 et choix pondérés
     │   └── sound.js             # Synthétiseur audio pur Web Audio API (sans fichiers MP3)
     ├── generation/
-    │   ├── characterGenerator.js# Calcul des stats, power, rareté et instanciations
+    │   ├── characterGenerator.js# Génération V2, Super Spin, passifs Atelier et valeur de recyclage
     │   └── massSimulator.js     # Outil de test sur 1 000 tirages consécutifs
     ├── combat/
     │   ├── battleEngine.js      # Moteur de combat tour par tour autonome
-    │   └── opponentsPool.js     # Gestionnaire du pool communautaire et des bots
+    │   └── opponentsPool.js     # Pool d'adversaires avec ratings ÉLO calibrés et challengers
     ├── collection/
     │   └── collectionManager.js # CRUD de collection et persistance localStorage
     ├── progression/
-    │   └── progressionManager.js# Gestion des charges horaires, XP, succès et classements
+    │   └── progressionManager.js# Moteur V2 : énergies (spins/tickets), jauge pity, Élo FIDE, recyclage et atelier
     └── ui/
-        ├── wheelUI.js           # Rouleaux de tirage et compteurs d'invocations
-        ├── characterCardUI.js   # Rendu réutilisable des fiches de cartes
-        ├── collectionUI.js      # Grille, filtres, recherche et modale de détail
-        ├── battleUI.js          # Arène de combat, logs défilants et jauges de PV
-        ├── devUI.js             # Panneau de triche, simulation 1000 et debug
-        ├── extrasUI.js          # Vues Daily, Classement et Statistiques
+        ├── wheelUI.js           # Rouleaux, jauge de chance 10/10, Super Spin et recyclage immédiat
+        ├── characterCardUI.js   # Rendu réutilisable des fiches de cartes (badges Super Spin, recyclage)
+        ├── collectionUI.js      # Grille, filtres, modale de détail et recyclage en pièces
+        ├── battleUI.js          # Arène de combat régulée par tickets, ratings ÉLO et ligues
+        ├── devUI.js             # Panneau de test Dev Mode V2 (+1000 pièces, pity 9/10, refill énergies)
+        ├── extrasUI.js          # Atelier d'améliorations, Classement par Ligues Élo et Statistiques
         └── notifications.js     # Système de toasts d'information
 ```
 
-### 4.2. Schéma de Données (JSON Models)
+### 4.2. Schéma de Données (JSON Models V2)
 
 #### Modèle `Character`
 ```json
@@ -361,7 +400,7 @@ c:\Users\natha\Documents\PROJET\RNGboy\
   "creatorName": "NathOof",
   "isPlayerCreated": true,
   "created_at": "2026-10-11T14:30:00.000Z",
-  "isDaily": false,
+  "isLuckySpin": false,
   "isUnstable": false,
   "race": "Démon",
   "raceId": "demon",
@@ -372,6 +411,7 @@ c:\Users\natha\Documents\PROJET\RNGboy\
   "power": "Feu",
   "powerId": "fire",
   "powerIcon": "🔥",
+  "powerTier": "common",
   "hp": 78,
   "maxHp": 78,
   "strength": 77,
@@ -392,28 +432,42 @@ c:\Users\natha\Documents\PROJET\RNGboy\
   "battlesCount": 4,
   "wins": 3,
   "losses": 1,
-  "value": 720
+  "value": 720,
+  "recycleValue": 132
 }
 ```
 
-#### Modèle `ProgressionState`
+#### Modèle `ProgressionState` (V2)
 ```json
 {
-  "points": 450,
+  "coins": 850,
+  "elo": 1084,
+  "pityCounter": 4,
   "xp": 340,
-  "level": 1,
-  "lastDailyTimestamp": 1791642000000,
-  "hourlySpins": {
+  "level": 2,
+  "spinEnergy": {
     "available": 2,
     "lastRegenTimestamp": 1791645600000
   },
+  "arenaEnergy": {
+    "available": 4,
+    "lastRegenTimestamp": 1791645800000
+  },
+  "workshopUpgrades": {
+    "rare_magnet": 1,
+    "hero_forge": 0,
+    "arena_bonus": 1,
+    "emergency_count_today": 0,
+    "last_emergency_date": "Sun Oct 11 2026"
+  },
   "stats": {
-    "totalGenerations": 12,
-    "totalBattles": 8,
-    "wins": 6,
+    "totalGenerations": 14,
+    "totalBattles": 9,
+    "wins": 7,
     "losses": 2,
     "legendariesCount": 1,
     "highestPower": 88,
+    "totalRecycled": 6,
     "discoveredSynergies": ["demon_fire", "robot_lightning"]
   },
   "unlockedAchievements": {
@@ -433,20 +487,24 @@ Le moteur s'appuie sur l'algorithme **Mulberry32** (`src/utils/random.js`). Lors
 
 La transition du prototype vers **Laravel 11**, **Livewire 3** et **Tailwind CSS** s'effectuera avec une correspondence directe des couches.
 
-### 5.1. Schéma de Base de Données (Migrations & Modèles Eloquent)
+### 5.1. Schéma de Base de Données (Migrations & Modèles Eloquent V2)
 
 ```sql
--- Table des Utilisateurs
+-- Table des Utilisateurs (Économie V2 & Élo)
 CREATE TABLE users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    points INT DEFAULT 250,
+    coins INT DEFAULT 150,
+    elo INT DEFAULT 1000,
+    pity_counter INT DEFAULT 0,
     xp INT DEFAULT 0,
     level INT DEFAULT 1,
-    hourly_spins_count INT DEFAULT 2,
+    spin_charges INT DEFAULT 3,
     last_spin_regen_at TIMESTAMP NULL,
-    last_daily_at TIMESTAMP NULL,
+    arena_tickets INT DEFAULT 5,
+    last_ticket_regen_at TIMESTAMP NULL,
+    workshop_upgrades JSON NULL,
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
@@ -459,15 +517,17 @@ CREATE TABLE characters (
     race_id VARCHAR(50) NOT NULL,
     weapon_id VARCHAR(50) NOT NULL,
     power_id VARCHAR(50) NOT NULL,
+    power_tier ENUM('common', 'rare', 'mythic') NOT NULL,
     hp INT NOT NULL,
     strength INT NOT NULL,
     speed INT NOT NULL,
     defense INT NOT NULL,
     power_score INT NOT NULL,
     rarity ENUM('common', 'rare', 'epic', 'legendary') NOT NULL,
-    is_daily BOOLEAN DEFAULT FALSE,
+    is_lucky_spin BOOLEAN DEFAULT FALSE,
     is_unstable BOOLEAN DEFAULT FALSE,
     synergies_data JSON NULL,
+    recycle_value INT NOT NULL,
     battles_count INT DEFAULT 0,
     wins INT DEFAULT 0,
     losses INT DEFAULT 0,
@@ -477,7 +537,7 @@ CREATE TABLE characters (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Table des Combats (Historique & Replay)
+-- Table des Combats (Historique & Évolution ÉLO)
 CREATE TABLE battles (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     challenger_id VARCHAR(36) NOT NULL,
@@ -485,7 +545,10 @@ CREATE TABLE battles (
     winner_id VARCHAR(36) NOT NULL,
     seed BIGINT NOT NULL,
     turns_count INT NOT NULL,
-    points_awarded INT NOT NULL,
+    player_old_elo INT NOT NULL,
+    player_new_elo INT NOT NULL,
+    elo_delta INT NOT NULL,
+    coins_awarded INT NOT NULL,
     xp_awarded INT NOT NULL,
     created_at TIMESTAMP
 );
@@ -497,23 +560,26 @@ Pour conserver la propreté du code, la logique ne résidera pas dans les contr�
 
 1. `App\Services\CharacterGeneratorService` :
    - `generate(User $user, array $options = []): Character`
-   - `calculateSynergies(string $race, string $weapon, string $power): array`
-   - `calculatePower(array $stats, array $synergies): int`
+   - Détection de la condition `isLuckySpin` ($10^{\text{ème}}$ tirage ou flag).
+   - Application des passifs d'atelier (`rare_magnet`, `hero_forge`).
+   - Calcul de la valeur de recyclage (`calculateRecycleValue`).
 2. `App\Services\BattleEngineService` :
    - `simulate(Character $c1, Character $c2, ?int $seed = null): BattleResult`
-   - Génère les logs détaillés et détermine le gagnant par seed déterministe.
+   - Formule officielle FIDE : `calculateEloDelta(int $pElo, int $oElo, bool $isWin): int`.
+   - Application de la prime d'arène sur les gains en pièces.
 3. `App\Services\EnergyManagerService` :
-   - Gère le calcul des recharges horaires côté serveur (sécurité anti-triche).
+   - `checkAndRegenSpins(User $user): void` (3 max, 1 / 4 min).
+   - `checkAndRegenTickets(User $user): void` (5 max, 1 / 5 min).
 
 ### 5.3. Découpage des Composants Livewire 3 + Alpine.js
 
 | Composant Livewire | Rôle Principal | Synergie avec Alpine.js |
 | :--- | :--- | :--- |
-| `Livewire\CharacterWheel` | Déclenche l'invocation, décrémente les charges | Alpine pilote l'animation visuelle du défilement des rouleaux pendant 1.5s avant de révéler le résultat reçu de Livewire |
-| `Livewire\CollectionGrid` | Filtres par race/rareté, tri par Power, suppression | Rendu instantané avec pagination réactive et modale de détail Alpine |
-| `Livewire\BattleArena` | Sélection de son guerrier, matchmaking asynchrone | Alpine lit la liste des logs tour par tour avec délai de temporisation (barres de vie qui diminuent en temps réel) |
-| `Livewire\DailySpin` | Réclame le personnage quotidien | Compte à rebours temps réel Alpine sans requêter la base en boucle |
-| `Livewire\Leaderboard` | Affiche le Top 50 mondial et la position de l'utilisateur | Rafraîchissement périodique |
+| `Livewire\CharacterWheel` | Déclenche le spin, gère la jauge de chance (Pity 10/10) | Alpine anime les 3 rouleaux pendant 1.6s et gère le compte à rebours dynamique de recharge (4 min) |
+| `Livewire\CollectionGrid` | Grille, filtres multi-critères, modale de recyclage | Modale instantanée avec confirmation de recyclage en pièces |
+| `Livewire\BattleArena` | Consomme 1 ticket (5 max), matchmaking par Élo | Défilement séquentiel des rounds avec barres de PV réactives |
+| `Livewire\Workshop` | Boutique d'améliorations passives permanentes | Achat instantané et feedback visuel des paliers débloqués |
+| `Livewire\Leaderboard` | Classement compétitif par Ligues (Bronze $\to$ Maître) | Filtrage par ligue et positionnement de l'utilisateur |
 
 ### 5.4. Charte Graphique & Tokens Tailwind CSS
 
@@ -524,6 +590,12 @@ Pour Tailwind, nous définissons une palette thématique inspirée du prototype 
   - Rare : `border-sky-500 text-sky-400 bg-sky-500/10 shadow-sky-500/20 shadow-lg`
   - Épique : `border-purple-500 text-purple-400 bg-purple-500/10 shadow-purple-500/30 shadow-lg`
   - Légendaire : `border-amber-400 text-amber-300 bg-amber-400/10 shadow-amber-400/40 shadow-xl animate-pulse`
+- **Ligues ÉLO :**
+  - Bronze : `text-amber-700 bg-amber-900/20 border-amber-800`
+  - Argent : `text-slate-300 bg-slate-700/20 border-slate-600`
+  - Or : `text-amber-400 bg-amber-500/20 border-amber-500`
+  - Platine : `text-cyan-300 bg-cyan-500/20 border-cyan-500`
+  - Maître : `text-purple-300 bg-purple-500/20 border-purple-500`
 - **Statistiques :**
   - PV : `bg-rose-500`
   - Force : `bg-amber-500`
@@ -534,29 +606,20 @@ Pour Tailwind, nous définissons une palette thématique inspirée du prototype 
 
 ## 6. Audit Critique & Pistes d'Amélioration Gameplay
 
-### 6.1. Points Forts du Prototype
-- **Boucle simple et addictive :** Lancer, voir le résultat, analyser les synergies, tester en duel.
-- **Les synergies instables :** Elles créent de vraies surprises (ex: le Golem qui se téléporte et écrase l'ennemi).
-- **Combat déterministe avec log clair :** On comprend pourquoi on gagne ou pourquoi on perd (initiative, étourdissement, critique).
-- **Régulation horaire :** Empêche le jeu de devenir un spam vide et donne de la valeur à chaque carte.
+### 6.1. Bilan des Améliorations de la V2
+- **Rétention ciblée (5-10 min) :** Les 3 invocations rapides et 5 tickets d'arène permettent de jouer une session complète, satisfaisante et sans temps mort.
+- **La Jauge de Chance (10/10) :** Remplace avec succès le Daily : chaque tirage (même faible) rapproche le joueur d'un Super Spin garanti, créant une vraie motivation à vider ses charges.
+- **Économie Circulaire :** Le recyclage systématique élimine la frustration des tirages ratés et donne un objectif à long terme via l'Atelier.
+- **Compétition équitable :** L'Élo FIDE et les 5 ligues apportent une véritable identité e-sport et un ladder gratifiant.
 
-### 6.2. Limites Identifiées & Axes d'Équilibrage
-1. **Passivité du joueur en combat :** Actuellement, le combat est 100% automatique sans aucun choix pré-combat ou en cours de duel.
-2. **Dilemme Garder / Rejeter trop faible :** Comme la collection stocke jusqu'à 150 cartes, le joueur clique quasiment toujours sur "Garder" sans hésitation.
-3. **Poids de la Vitesse en combat :** Une vitesse trop dominante peut permettre d'attaquer toujours en premier et d'achever la cible avant qu'elle ne réplique.
-4. **Valorisation des doublons ou cartes faibles :** Rien n'est encore prévu pour valoriser les cartes communes décevantes (recyclage, fusion).
-
-### 6.3. Idées d'Itérations Immédiates (Avant ou pendant le portage)
-
-1. **Système de "Fusion / Recyclage" (Forge de cartes) :**
-   - Pouvoir sacrifier 3 cartes communes pour obtenir des ressources ou une charge de tirage supplémentaire.
-2. **Postures Tactiques Pré-Combat :**
-   - Avant de lancer le combat, le joueur choisit une posture : *Offensive* (+15% Force, -10% Défense), *Défensive* (+20% Défense, -10% Vitesse) ou *Fourbe* (+20% Vitesse, coups critiques accrus). Cela redonne du contrôle au joueur.
-3. **Objets / Reliques équipables :**
-   - 1 emplacement d'accessoire ou gemme (ex: Amulette de régénération, Anneau de précision) gagné lors des victoires en arène.
-4. **Mode Arène à 3 Vagues (Donjon / Boss) :**
-   - Un mode PvE où une même carte affronte 3 adversaires successifs avec conservation des PV restants.
+### 6.2. Axes Futurs de Rétention & Équilibrage
+1. **Postures Tactiques Pré-Combat :**
+   - Avant de lancer le combat, le joueur choisit une posture : *Offensive* (+15% Force, -10% Défense), *Défensive* (+20% Défense, -10% Vitesse) ou *Fourbe* (+20% Vitesse, critiques accrus).
+2. **Objets / Reliques Équipables :**
+   - 1 emplacement d'accessoire (ex: Amulette de régénération, Anneau de précision) déblocable à l'Atelier ou en ligue Platine/Maître.
+3. **Mode Boss d'Arène Hebdomadaire (Raid Asynchrone) :**
+   - Un colosse mondial avec une barre de PV collective où chaque joueur peut envoyer son meilleur héros 1 fois par jour.
 
 ---
 
-*Document généré pour le projet WHEELBORN (RNGboy). Document de référence unique pour le développement du jeu.*
+*Document de Game Design & Spécifications Techniques — Version 2.0.0 — WHEELBORN (RNGboy).*

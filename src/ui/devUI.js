@@ -59,8 +59,8 @@ export class DevUI {
               <h4>⭐ Progression & Économie V2</h4>
               <div class="dev-btn-group">
                 <button class="btn btn-outline btn-sm" id="dev-add-coins">🪙 +1 000 Pièces</button>
-                <button class="btn btn-outline btn-sm" id="dev-add-xp">+500 XP</button>
-                <button class="btn btn-warning btn-sm" id="dev-trigger-pity">🌟 Jauge Chance 9/10</button>
+                <button class="btn btn-warning btn-sm" id="dev-trigger-pity-10">🌟 Jauge 10/10 (Prêt)</button>
+                <button class="btn btn-outline btn-sm" id="dev-trigger-pity-9">⚡ Jauge 9/10</button>
               </div>
               <div class="dev-btn-group" style="margin-top: 8px;">
                 <button class="btn btn-outline btn-sm" id="dev-add-spin">🎟️ +3 Invocations</button>
@@ -162,10 +162,17 @@ export class DevUI {
       this.notifyChange();
     });
 
-    this.container.querySelector("#dev-trigger-pity")?.addEventListener("click", () => {
+    this.container.querySelector("#dev-trigger-pity-10")?.addEventListener("click", () => {
+      progressionManager.state.pityCounter = 10;
+      progressionManager.saveState();
+      showToast("Jauge de Chance fixée à 10/10 ! Prochain tirage = 🌟 SUPER SPIN garanti (repassera à 0 après)", "warning");
+      this.notifyChange();
+    });
+
+    this.container.querySelector("#dev-trigger-pity-9")?.addEventListener("click", () => {
       progressionManager.state.pityCounter = 9;
       progressionManager.saveState();
-      showToast("Jauge de Chance fixée à 9/10 ! Prochain tirage = 🌟 SUPER SPIN garanti !", "warning");
+      showToast("Jauge de Chance fixée à 9/10 ! Prochain tirage standard passera la jauge à 10/10.", "info");
       this.notifyChange();
     });
 

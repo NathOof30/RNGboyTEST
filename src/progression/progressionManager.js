@@ -336,32 +336,34 @@ export class ProgressionManager {
 
   getPityInfo() {
     const max = GAME_CONFIG.PITY_THRESHOLD;
-    const current = this.state.pityCounter || 0;
-    const isLuckyReady = current >= (max - 1); // Le 10ème tirage (index 9 vers 10) est le Super Spin
+    const current = Math.min(max, Math.max(0, this.state.pityCounter || 0));
+    const isLuckyReady = current >= max;
     return {
       current,
       max,
-      isLuckyReady: current >= max,
+      isLuckyReady,
       percent: Math.min(100, Math.round((current / max) * 100)),
     };
+  }
+
+  isLuckyReady() {
+    const max = GAME_CONFIG.PITY_THRESHOLD;
+    return (this.state.pityCounter || 0) >= max;
   }
 
   incrementPity() {
     const max = GAME_CONFIG.PITY_THRESHOLD;
     const current = this.state.pityCounter || 0;
-
-    if (current >= max) {
-      // Super Spin consommé, on recommence à 1
-      this.state.pityCounter = 1;
-      this.saveState();
-      return { isLuckySpin: true, nextCount: 1 };
-    }
-
-    const next = current + 1;
+    const next = Math.min(max, current + 1);
     this.state.pityCounter = next;
-    const isLuckySpin = next >= max;
     this.saveState();
-    return { isLuckySpin, nextCount: next };
+    return next;
+  }
+
+  resetPity() {
+    this.state.pityCounter = 0;
+    this.saveState();
+    return 0;
   }
 
   // --- FORMULE ÉLO OFFICIELLE & LIGUES ---

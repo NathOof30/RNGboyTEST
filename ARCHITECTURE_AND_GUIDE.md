@@ -48,65 +48,46 @@ Le code est rigoureusement découplé conformément aux spécifications du proje
 
 ---
 
-## 2. Explications des Mécaniques Clés
+## 2. Explications des Mécaniques Clés (Version 2.0)
 
-### 2.1. Comment fonctionne la génération & régulation ?
-1. **Régulation horaire (Anti-création infinie)** : Le joueur dispose d'un stock d'invocations (maximum 2). Une invocation se recharge automatiquement toutes les heures (3 600 secondes).
-2. **Sélection des 3 composantes** : Lors du lancement, un tirage pondéré (`weightedChoice`) détermine la **Race**, l'**Arme** et le **Pouvoir** selon leurs poids respectifs définis dans `races.js`, `weapons.js` et `powers.js`.
-3. **Détection des synergies** : `calculateSynergies()` analyse le trio `{ raceId, weaponId, powerId }` et active les synergies et combinaisons instables éligibles.
-4. **Tirage des statistiques de base** : Les valeurs initiales sont tirées dans une fourchette équilibrée (ex: 55-75 PV, 45-70 Force, etc.).
-5. **Application des modificateurs** : Les bonus de race (avec variance aléatoire supplémentaire pour le **Mutant**), d'arme et de synergies s'additionnent.
-6. **Calcul du POWER et de la Rareté** : Un score global pondéré est calculé, puis la rareté est attribuée selon la table stricte.
-7. **Attribution d'un nom** : `generateCharacterName()` combine des préfixes/suffixes phonétiques (ou désignation robotique type `X-17`).
-8. **Enregistrement communautaire** : Dès qu'une carte est conservée, elle est ajoutée au pool communautaire partagé pour servir d'adversaire potentiel à d'autres joueurs.
+### 2.1. Comment fonctionne la génération & la jauge de chance ?
+1. **Invocations rapides (Micro-sessions 5-10 min)** : Le joueur dispose d'un stock de **3 charges maximum**. Une charge se régénère automatiquement toutes les **4 minutes** (240 secondes).
+2. **Jauge de Chance (Pity System 10/10)** : Chaque tirage standard fait monter la jauge d'une unité. Au 10ème tirage, un **Super Spin garanti** est déclenché (0% commun, 60% rare, 30% épique, 10% légendaire + pouvoir rare ou mythique garanti). Cette jauge remplace avantageusement le Daily spin.
+3. **Sélection des 3 composantes** : Lors du lancement, un tirage pondéré (`weightedChoice`) détermine la **Race**, l'**Arme** et le **Pouvoir** selon leurs poids respectifs définis dans `races.js`, `weapons.js` et `powers.js`.
+4. **Tiers de pouvoirs** : Les pouvoirs sont catégorisés en *Communs* (~60%), *Rares* (~28%) et *Mythiques* (~12%).
+5. **Détection des synergies** : `calculateSynergies()` analyse le trio `{ raceId, weaponId, powerId }` et active les synergies et combinaisons instables éligibles.
+6. **Passifs d'Atelier** : Si le joueur a acheté des niveaux dans la *Forge des Héros* ou l'*Aimant à Rareté*, les planchers de statistiques et les taux de rareté sont rehaussés.
+7. **Recyclage systématique en Pièces** : Tout personnage non conservé est immédiatement converti en **Pièces d'Or 🪙** pour être réinvesti dans l'Atelier.
 
 ### 2.2. Comment fonctionne le calcul des statistiques ?
 Dans `src/generation/characterGenerator.js` :
-$$\text{Stat Finale} = \text{Base} + \text{Mod Race} + \text{Mod Arme} + \text{Bonus Synergies} + \text{Variance Mutant}$$
+$$\text{Stat Finale} = \text{Base} + \text{Mod Race} + \text{Mod Arme} + \text{Bonus Synergies} + \text{Bonus Atelier} + \text{Variance Mutant}$$
 Les statistiques sont bornées pour éviter les déséquilibres extrêmes (PV : 30 à 130, Force/Vitesse/Défense : 10 à 100).
 
 ### 2.3. Comment fonctionne le calcul du POWER (Score Global) ?
 Dans `src/data/config.js` et `calculatePower()` :
 $$\text{Power} = (\text{HP} \times 0.24) + (\text{Force} \times 0.32) + (\text{Défense} \times 0.24) + (\text{Vitesse} \times 0.20) + (\text{Synergies} \times 3) + (\text{Bonus Instable})$$
-Le score oscille typiquement entre 40 et 95.
+Le score oscille typiquement entre 40 et 98.
 
-### 2.4. Comment fonctionne la rareté (Véritable Scarcity) ?
+### 2.4. Comment fonctionne la rareté & le Super Spin ?
 Dans `src/data/config.js` :
-* **Génération Standard** : Commun (72%), Rare (21%), Épique (6%), **Légendaire (1.0%)**.
-* **Génération Quotidienne (Daily)** : Commun (48%), Rare (34%), Épique (14%), **Légendaire (4.0%)**.
-* La rareté Légendaire est un véritable événement prestigieux aux bordures dorées rayonnantes.
+* **Tirage Standard** : Commun (72%), Rare (21%), Épique (6%), **Légendaire (1.0%)**.
+* **Super Spin (10ème tirage de Chance)** : **Commun (0%)**, **Rare (60%)**, **Épique (30%)**, **Légendaire (10.0%)**.
+* La rareté Légendaire est un événement d'exception reconnaissable à ses bordures dorées rayonnantes.
 
-### 2.5. Comment fonctionnent les adversaires de combat (Matchmaking) ?
-Dans `src/combat/opponentsPool.js` :
-1. **Priorité aux cartes créées par les joueurs** : Le système recherche en priorité des combattants créés par d'autres joueurs (dans une tranche de puissance similaire).
-2. **Fallback automatique vers les combattants fictifs** : Si le pool de cartes joueurs est vide ou insuffisant au lancement, l'arène génère automatiquement un combattant fictif (IA d'arène).
-3. **Badges d'origine** : Chaque carte indique clairement `👤 [Pseudo du joueur]` ou `🤖 Bot Arène`.
+### 2.5. Comment fonctionnent les combats d'Arène, Tickets & Formule ÉLO ?
+Dans `src/combat/opponentsPool.js` et `src/progression/progressionManager.js` :
+1. **Tickets d'Arène (Régulation anti-farm)** : Réserve de **5 tickets max**, régénération d'**1 ticket toutes les 5 minutes**.
+2. **Formule officielle ÉLO FIDE** : Calcul d'espérance de score $E = \frac{1}{1 + 10^{(R_{\text{adv}} - R_{\text{joueur}})/400}}$ avec facteur $K = 32$.
+3. **5 Ligues Compétitives** : Bronze (0-999), Argent (1000-1199, rang de départ), Or (1200-1399), Platine (1400-1599), Maître (1600+).
+4. **Récompenses de duel** : Les victoires rapportent des Pièces d'Or (bonifiées contre les rivaux plus forts et par l'Atelier) et des points d'Élo.
 
-### 2.5. Comment fonctionnent les synergies ?
-Définies dans `src/data/synergies.js`. Chaque synergie possède une fonction `condition(char)` et des `effects`.
-Exemples :
-* **Démon + Feu** (*Affinité Démoniaque*) : +18% Dégâts globaux et DoT de Brûlure amplifié de +50%.
-* **Robot + Foudre** (*Supraconducteur*) : +15 Défense, immunité aux débuffs électriques et absorption de la foudre pour se soigner.
-* **Vampire + Régénération** (*Sangsue Immortelle*) : Draine 25% des dégâts infligés et soigne +12 PV/tour.
-* **Golem + Téléportation** (*Masse Déplacée - Instable*) : 20% d'esquive avec téléportation d'un colosse de 10 tonnes qui retombe en infligeant 30 dégâts bonus !
-
-### 2.6. Comment fonctionne le combat (Non purement RNG) ?
-Dans `src/combat/battleEngine.js` :
-1. **Initiative** : Comparaison de la Vitesse dynamique des deux combattants à chaque tour. Le plus rapide frappe en premier.
-2. **Début de tour** : Résolution des DoTs (Brûlure, Poison croissant) et HoTs (Régénération de PV).
-3. **Esquive** : Vérification des passifs d'esquive (Téléportation 28%, Alien 8%, Invisibilité 100% au 1er tour), sauf si l'adversaire dispose d'une allonge traversante (ex: Lance).
-4. **Calcul des dégâts** :
-   $$\text{Dégâts} = \max(5, (0.75 \times \text{Force}_{\text{attaquant}} - 0.38 \times \text{Défense}_{\text{défenseur}} + \text{Aléatoire}(-3, +3)) \times \text{Multiplicateurs})$$
-5. **Coups critiques** : Calculés selon l'arme (Pistolet), le pouvoir (Foudre) ou les synergies.
-6. **Effets secondaires** : Étourdissement du Marteau, Ralentissement du Gel ou de la Gravité, Vol de vie du Vampire, Contre-attaque spatiale de l'Alien.
-7. **Reproductibilité** : Tout le combat accepte une `seed` optionnelle qui garantit un déroulement strictement identique pour le débogage.
-
-### 2.7. Comment fonctionne la progression ?
-Dans `src/progression/progressionManager.js` :
-* **Points** : +100 pour une victoire (+ bonus d'outsider si l'adversaire avait un Power supérieur), +25 pour une défaite, +200 bonus Daily.
-* **Niveaux et XP** : Gagne de l'XP à chaque génération (+10 XP), combat (+60/+20 XP), découverte d'une nouvelle synergie (+80 XP) ou légendaire (+150 XP).
-* **Succès** : 8 objectifs suivis en direct (Première victoire, 10 combattants, Tueur de colosse, etc.).
-* **Classement dynamique** : Affiche les 10 meilleurs rivaux où le joueur est classé selon ses points réels.
+### 2.6. Comment fonctionne l'Atelier (Workshop) ?
+Dans `src/ui/extrasUI.js` et `src/progression/progressionManager.js` :
+* **Aimant à Rareté** (5 niveaux) : améliore les chances d'obtenir des cartes Rares, Épiques et Légendaires.
+* **Forge des Héros** (5 niveaux) : élève les statistiques minimales garanties lors de chaque création de héros.
+* **Prime d'Arène** (4 niveaux) : multiplie les gains en pièces d'or après chaque victoire en arène.
+* **Invocation d'Urgence** : achat direct de charges de spin contre des pièces (max 2 fois par jour).
 
 ---
 
@@ -114,15 +95,14 @@ Dans `src/progression/progressionManager.js` :
 
 | Ce que vous souhaitez modifier | Fichier concerné | Lignes / Variables clés |
 | :--- | :--- | :--- |
-| **Probabilités des raretés** | `src/data/config.js` | `RARITY_WEIGHTS` et `DAILY_RARITY_WEIGHTS` |
+| **Énergie Invocations & Arène** | `src/data/config.js` | `SPIN_ENERGY` (3 max, 4 min) et `ARENA_ENERGY` (5 max, 5 min) |
+| **Probabilités Rareté & Super Spin** | `src/data/config.js` | `RARITY_WEIGHTS` et `LUCKY_RARITY_WEIGHTS` |
+| **Tiers de Pouvoirs** | `src/data/powers.js` | Propriété `tier: 'common' \| 'rare' \| 'mythic'` et `POWERS_TIERS` |
+| **Ligues & Facteur K ÉLO** | `src/data/config.js` | `ELO_CONFIG` (Ligues, `STARTING_ELO: 1000`, `K_FACTOR: 32`) |
+| **Paliers de l'Atelier** | `src/data/config.js` | `WORKSHOP_UPGRADES` |
 | **Pondération du Score (Power)** | `src/data/config.js` | `POWER_WEIGHTS` |
-| **Valeurs de base des stats** | `src/data/config.js` | `BASE_STATS` |
-| **Points et XP gagnés** | `src/data/config.js` | `REWARDS` |
-| **Ajouter une nouvelle Race** | `src/data/races.js` | Ajouter un objet dans le tableau `RACES` |
-| **Ajouter une nouvelle Arme** | `src/data/weapons.js` | Ajouter un objet dans le tableau `WEAPONS` |
-| **Ajouter un nouveau Pouvoir** | `src/data/powers.js` | Ajouter un objet dans le tableau `POWERS` |
-| **Ajouter de nouvelles Synergies** | `src/data/synergies.js` | Ajouter un objet dans le tableau `SYNERGIES` |
-| **Modifier les règles de combat** | `src/combat/battleEngine.js` | Fonctions `simulateBattle()` et `executeFighterTurn()` |
+| **Ajouter une Race / Arme / Pouvoir** | `src/data/races.js`, `weapons.js`, `powers.js` | Ajouter un objet avec id, icône, stats et effets |
+| **Modifier les règles de combat** | `src/combat/battleEngine.js` | `simulateBattle()` et `executeFighterTurn()` |
 
 ---
 
@@ -131,12 +111,15 @@ Dans `src/progression/progressionManager.js` :
 La transition vers **Laravel 11+ et Livewire 3** est directe grâce à l'architecture modulaire :
 
 1. **Modèles Eloquent & Migrations** :
-   * `Character` (`id`, `user_id`, `name`, `race`, `weapon`, `power`, `hp`, `strength`, `speed`, `defense`, `power_score`, `rarity`, `synergies` (JSON), `wins`, `losses`).
-   * `User` (`points`, `xp`, `level`, `last_daily_at`).
+   * `Character` (`id`, `user_id`, `name`, `race_id`, `weapon_id`, `power_id`, `power_tier`, `hp`, `strength`, `speed`, `defense`, `power_score`, `rarity`, `recycle_value`, `synergies_data` JSON, `wins`, `losses`).
+   * `User` (`coins`, `elo`, `pity_counter`, `spin_charges`, `arena_tickets`, `workshop_upgrades` JSON, `xp`, `level`).
 2. **Services PHP purs** :
-   * `App\Services\CharacterGenerator` : convertit `characterGenerator.js` en méthodes statiques ou injectables.
-   * `App\Services\BattleEngine` : convertit `battleEngine.js`. La seed peut être enregistrée en base pour rejouer les duels !
+   * `App\Services\CharacterGeneratorService` : convertit `characterGenerator.js` en service injectable.
+   * `App\Services\BattleEngineService` : convertit `battleEngine.js` avec calcul de l'Élo FIDE et persistance de la seed.
+   * `App\Services\EnergyManagerService` : régénère les charges de spins et tickets d'arène côté serveur.
 3. **Composants Livewire 3** :
-   * `Livewire\CharacterGenerator` : gère les boutons, le spin (avec transitions Alpine.js) et la décision Garder/Rejeter.
-   * `Livewire\CollectionGrid` : gère les filtres `wire:model.live="filterRace"` et le tri réactif.
-   * `Livewire\BattleArena` : gère le matchmaking, l'affichage des jauges et le journal tour par tour via Alpine.js ou Livewire poll/events.
+   * `Livewire\CharacterWheel` : gère les charges, le spin avec rouleaux Alpine.js et la jauge de chance (Pity 10/10).
+   * `Livewire\CollectionGrid` : gère les filtres `wire:model.live="filterRace"`, le tri réactif et la modale de recyclage en pièces.
+   * `Livewire\BattleArena` : gère les tickets d'arène, le matchmaking Élo et l'animation du journal de combat.
+   * `Livewire\Workshop` : gère l'achat réactif des améliorations permanentes avec les pièces d'or.
+   * `Livewire\Leaderboard` : affiche le classement par ligues (Bronze à Maître).

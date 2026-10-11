@@ -240,6 +240,9 @@ export class WheelUI {
       }
       if (btnFast) {
         btnFast.disabled = info.available <= 0;
+        btnFast.innerHTML = pity.isLuckyReady
+          ? `🌟 Tirage Instantané (Super Spin)`
+          : `⚡ Tirage Instantané (Passer animation)`;
       }
     }
   }
@@ -258,8 +261,8 @@ export class WheelUI {
     // Consommer 1 charge d'énergie
     progressionManager.consumeSpinCharge();
 
-    // Avancement de la Jauge de Chance (Pity 10/10)
-    const pityOutcome = progressionManager.incrementPity();
+    // Si la jauge est à 10 quand on spin, ce tirage bénéficie de l'effet Lucky Spin
+    const isLuckySpin = progressionManager.isLuckyReady();
 
     this.updateSpinsDisplay();
     if (this.onCollectionUpdated) this.onCollectionUpdated();
@@ -269,7 +272,7 @@ export class WheelUI {
 
     // Lancer la génération
     this.startGeneration(instant, {
-      isLuckySpin: pityOutcome.isLuckySpin,
+      isLuckySpin,
       workshopUpgrades,
     });
   }
@@ -351,6 +354,17 @@ export class WheelUI {
     const btnRecycle = this.container.querySelector("#btn-recycle");
 
     if (!revealZone || !cardContainer) return;
+
+    // Mise à jour de la Jauge de Chance une fois la carte reçue :
+    // - Si la carte a été obtenue avec l'effet Lucky Spin (jauge était à 10), on remet la jauge à zéro (0)
+    // - Sinon, on ajoute +1 à la jauge
+    if (character.isLuckySpin) {
+      progressionManager.resetPity();
+    } else {
+      progressionManager.incrementPity();
+    }
+    this.updateSpinsDisplay();
+    if (this.onCollectionUpdated) this.onCollectionUpdated();
 
     if (revealBanner) {
       if (character.isLuckySpin) {
