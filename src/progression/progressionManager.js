@@ -1,17 +1,20 @@
 /**
- * GESTIONNAIRE DE PROGRESSION ET STATISTIQUES (Sections 25, 26, 27, 28, 32, 33, 34)
+ * GESTIONNAIRE DE PROGRESSION ET ÉCONOMIE — V2
  * 
- * - Points du joueur et classement dynamique
- * - Système de niveaux et XP
- * - Personnage du Jour (Daily) avec reset de test
- * - Succès (Achievements) déblocables
- * - Statistiques globales du profil
+ * - Monnaie : Pièces d'or (Coins 🪙)
+ * - Invocations : 3 charges max, 1 recharge toutes les 4 minutes
+ * - Tickets d'Arène : 5 tickets max, 1 recharge toutes les 5 minutes
+ * - Jauge de Chance (Pity 10/10) : Remplace le Daily, 10ème spin garanti Super Spin
+ * - Système ÉLO officiel (FIDE) et Ligues (Bronze, Argent, Or, Platine, Maître)
+ * - Recyclage de cartes en pièces
+ * - Atelier d'améliorations permanentes
  */
 
 import { GAME_CONFIG } from "../data/config.js";
 import { collectionManager } from "../collection/collectionManager.js";
 
-const PROGRESSION_KEY = "wheelborn_progression";
+const PROGRESSION_KEY = "wheelborn_progression_v2";
+const LEGACY_KEY = "wheelborn_progression";
 
 export class ProgressionManager {
   constructor() {
@@ -20,16 +23,33 @@ export class ProgressionManager {
 
   getDefaultState() {
     return {
-      points: 250,
+      coins: 250,
       xp: 0,
       level: 1,
-      lastDailyTimestamp: 0,
-      hasDailyAvailable: true,
+      elo: GAME_CONFIG.ELO_CONFIG.STARTING_ELO, // 1000 de base
 
-      // Invocations horaires (Section Équilibrage : 1 tirage par heure)
-      hourlySpins: {
-        available: GAME_CONFIG.HOURLY_SPIN.STARTER_CHARGES,
+      // Jauge de chance (Pity au 10ème tirage)
+      pityCounter: 0,
+
+      // Invocations rapides (3 charges, recharge toutes les 4 min)
+      spinEnergy: {
+        available: GAME_CONFIG.SPIN_ENERGY.STARTER_CHARGES,
         lastRegenTimestamp: Date.now(),
+      },
+
+      // Tickets d'Arène (5 tickets, recharge toutes les 5 min)
+      arenaEnergy: {
+        available: GAME_CONFIG.ARENA_ENERGY.STARTER_TICKETS,
+        lastRegenTimestamp: Date.now(),
+      },
+
+      // Améliorations de l'Atelier
+      workshopUpgrades: {
+        rare_magnet: 0,     // 0 à 5
+        hero_forge: 0,      // 0 à 5
+        arena_bonus: 0,     // 0 à 3
+        emergency_count_today: 0,
+        last_emergency_date: new Date().toDateString(),
       },
 
       // Statistiques globales
@@ -40,11 +60,12 @@ export class ProgressionManager {
         losses: 0,
         legendariesCount: 0,
         highestPower: 0,
+        totalRecycled: 0,
+        coinsEarnedTotal: 250,
         discoveredSynergies: [],
         discoveredPowers: [],
       },
 
-      // Succès débloqués
       unlockedAchievements: {},
     };
   }
@@ -56,8 +77,23 @@ export class ProgressionManager {
         const parsed = JSON.parse(data);
         return { ...this.getDefaultState(), ...parsed };
       }
+
+      // Migration de l'ancien format si existant
+      const oldData = localStorage.getItem(LEGACY_KEY);
+      if (oldData) {
+        const oldParsed = JSON.parse(oldData);
+        const def = this.getDefaultState();
+        return {
+          ...def,
+          coins: oldParsed.points || def.coins,
+          xp: oldParsed.xp || 0,
+          level: oldParsed.level || 1,
+          stats: { ...def.stats, ...(oldParsed.stats || {}) },
+          unlockedAchievements: oldParsed.unlockedAchievements || {},
+        };
+      }
     } catch (e) {
-      console.warn("Erreur chargement progression", e);
+      console.warn("Erreur chargement progression V2", e);
     }
     return this.getDefaultState();
   }
@@ -66,17 +102,31 @@ export class ProgressionManager {
     try {
       localStorage.setItem(PROGRESSION_KEY, JSON.stringify(this.state));
     } catch (e) {
-      console.error("Erreur sauvegarde progression", e);
+      console.error("Erreur sauvegarde progression V2", e);
     }
   }
 
-  // --- POINTS & XP ---
+  // --- MONNAIE : PIÈCES (COINS 🪙) ---
 
-  addPoints(amount) {
-    this.state.points = Math.max(0, this.state.points + amount);
-    this.saveState();
-    return this.state.points;
+  getCoins() {
+    return this.state.coins || 0;
   }
+
+  addCoins(amount) {
+    this.state.coins = Math.max(0, (this.state.coins || 0) + amount);
+    this.state.stats.coinsEarnedTotal = (this.state.stats.coinsEarnedTotal || 0) + amount;
+    this.saveState();
+    return this.state.coins;
+  }
+
+  spendCoins(amount) {
+    if ((this.state.coins || 0) < amount) return false;
+    this.state.coins -= amount;
+    this.saveState();
+    return true;
+  }
+
+  // --- XP & NIVEAUX ---
 
   addXP(amount) {
     this.state.xp += amount;
@@ -124,40 +174,274 @@ export class ProgressionManager {
     };
   }
 
-  // --- TRAITEMENT COMBAT ---
+  // --- CHARGES DE TIRAGE (3 max, recharge 4 minutes) ---
+
+  checkAndRegenSpinEnergy() {
+    const cfg = GAME_CONFIG.SPIN_ENERGY;
+    if (!this.state.spinEnergy) {
+      this.state.spinEnergy = {
+        available: cfg.STARTER_CHARGES,
+        lastRegenTimestamp: Date.now(),
+      };
+    }
+
+    const energy = this.state.spinEnergy;
+    if (energy.available < cfg.MAX_CHARGES) {
+      const now = Date.now();
+      const elapsed = now - (energy.lastRegenTimestamp || now);
+      if (elapsed >= cfg.REGEN_INTERVAL_MS) {
+        const recharged = Math.floor(elapsed / cfg.REGEN_INTERVAL_MS);
+        energy.available = Math.min(cfg.MAX_CHARGES, energy.available + recharged);
+        if (energy.available >= cfg.MAX_CHARGES) {
+          energy.lastRegenTimestamp = now;
+        } else {
+          energy.lastRegenTimestamp += recharged * cfg.REGEN_INTERVAL_MS;
+        }
+        this.saveState();
+      }
+    }
+  }
+
+  getSpinEnergyInfo() {
+    this.checkAndRegenSpinEnergy();
+    const cfg = GAME_CONFIG.SPIN_ENERGY;
+    const energy = this.state.spinEnergy;
+
+    let timeRemainingMs = 0;
+    let countdownFormatted = "Plein";
+
+    if (energy.available < cfg.MAX_CHARGES) {
+      const now = Date.now();
+      const elapsed = now - (energy.lastRegenTimestamp || now);
+      timeRemainingMs = Math.max(0, cfg.REGEN_INTERVAL_MS - elapsed);
+      const minutes = Math.floor(timeRemainingMs / 60000);
+      const seconds = Math.floor((timeRemainingMs % 60000) / 1000);
+      countdownFormatted = `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+    }
+
+    return {
+      available: energy.available,
+      max: cfg.MAX_CHARGES,
+      timeRemainingMs,
+      countdownFormatted,
+      canSpin: energy.available > 0,
+    };
+  }
+
+  consumeSpinCharge() {
+    this.checkAndRegenSpinEnergy();
+    const cfg = GAME_CONFIG.SPIN_ENERGY;
+    const energy = this.state.spinEnergy;
+
+    if (energy.available <= 0) return false;
+
+    if (energy.available === cfg.MAX_CHARGES) {
+      energy.lastRegenTimestamp = Date.now();
+    }
+
+    energy.available--;
+    this.saveState();
+    return true;
+  }
+
+  addSpinCharges(count = 1) {
+    const cfg = GAME_CONFIG.SPIN_ENERGY;
+    if (!this.state.spinEnergy) {
+      this.state.spinEnergy = { available: cfg.STARTER_CHARGES, lastRegenTimestamp: Date.now() };
+    }
+    this.state.spinEnergy.available = Math.min(cfg.MAX_CHARGES + 5, this.state.spinEnergy.available + count);
+    this.saveState();
+  }
+
+  // --- TICKETS D'ARÈNE (5 max, recharge 5 minutes) ---
+
+  checkAndRegenArenaTickets() {
+    const cfg = GAME_CONFIG.ARENA_ENERGY;
+    if (!this.state.arenaEnergy) {
+      this.state.arenaEnergy = {
+        available: cfg.STARTER_TICKETS,
+        lastRegenTimestamp: Date.now(),
+      };
+    }
+
+    const arena = this.state.arenaEnergy;
+    if (arena.available < cfg.MAX_TICKETS) {
+      const now = Date.now();
+      const elapsed = now - (arena.lastRegenTimestamp || now);
+      if (elapsed >= cfg.REGEN_INTERVAL_MS) {
+        const recharged = Math.floor(elapsed / cfg.REGEN_INTERVAL_MS);
+        arena.available = Math.min(cfg.MAX_TICKETS, arena.available + recharged);
+        if (arena.available >= cfg.MAX_TICKETS) {
+          arena.lastRegenTimestamp = now;
+        } else {
+          arena.lastRegenTimestamp += recharged * cfg.REGEN_INTERVAL_MS;
+        }
+        this.saveState();
+      }
+    }
+  }
+
+  getArenaTicketInfo() {
+    this.checkAndRegenArenaTickets();
+    const cfg = GAME_CONFIG.ARENA_ENERGY;
+    const arena = this.state.arenaEnergy;
+
+    let timeRemainingMs = 0;
+    let countdownFormatted = "Plein";
+
+    if (arena.available < cfg.MAX_TICKETS) {
+      const now = Date.now();
+      const elapsed = now - (arena.lastRegenTimestamp || now);
+      timeRemainingMs = Math.max(0, cfg.REGEN_INTERVAL_MS - elapsed);
+      const minutes = Math.floor(timeRemainingMs / 60000);
+      const seconds = Math.floor((timeRemainingMs % 60000) / 1000);
+      countdownFormatted = `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+    }
+
+    return {
+      available: arena.available,
+      max: cfg.MAX_TICKETS,
+      timeRemainingMs,
+      countdownFormatted,
+      canBattle: arena.available > 0,
+    };
+  }
+
+  consumeArenaTicket() {
+    this.checkAndRegenArenaTickets();
+    const cfg = GAME_CONFIG.ARENA_ENERGY;
+    const arena = this.state.arenaEnergy;
+
+    if (arena.available <= 0) return false;
+
+    if (arena.available === cfg.MAX_TICKETS) {
+      arena.lastRegenTimestamp = Date.now();
+    }
+
+    arena.available--;
+    this.saveState();
+    return true;
+  }
+
+  addArenaTickets(count = 1) {
+    const cfg = GAME_CONFIG.ARENA_ENERGY;
+    if (!this.state.arenaEnergy) {
+      this.state.arenaEnergy = { available: cfg.STARTER_TICKETS, lastRegenTimestamp: Date.now() };
+    }
+    this.state.arenaEnergy.available = Math.min(cfg.MAX_TICKETS + 5, this.state.arenaEnergy.available + count);
+    this.saveState();
+  }
+
+  // --- JAUGE DE CHANCE (PITY SYSTEM AU 10ème TIRAGE) ---
+
+  getPityInfo() {
+    const max = GAME_CONFIG.PITY_THRESHOLD;
+    const current = this.state.pityCounter || 0;
+    const isLuckyReady = current >= (max - 1); // Le 10ème tirage (index 9 vers 10) est le Super Spin
+    return {
+      current,
+      max,
+      isLuckyReady: current >= max,
+      percent: Math.min(100, Math.round((current / max) * 100)),
+    };
+  }
+
+  incrementPity() {
+    const max = GAME_CONFIG.PITY_THRESHOLD;
+    const current = this.state.pityCounter || 0;
+
+    if (current >= max) {
+      // Super Spin consommé, on recommence à 1
+      this.state.pityCounter = 1;
+      this.saveState();
+      return { isLuckySpin: true, nextCount: 1 };
+    }
+
+    const next = current + 1;
+    this.state.pityCounter = next;
+    const isLuckySpin = next >= max;
+    this.saveState();
+    return { isLuckySpin, nextCount: next };
+  }
+
+  // --- FORMULE ÉLO OFFICIELLE & LIGUES ---
+
+  getElo() {
+    return this.state.elo || GAME_CONFIG.ELO_CONFIG.STARTING_ELO;
+  }
+
+  getLeague(eloValue = null) {
+    const elo = eloValue !== null ? eloValue : this.getElo();
+    const leagues = GAME_CONFIG.ELO_CONFIG.LEAGUES;
+    return leagues.find(l => elo >= l.minElo && elo <= l.maxElo) || leagues[0];
+  }
+
+  calculateEloDelta(playerElo, opponentElo, isWin) {
+    // Formule FIDE : E_A = 1 / (1 + 10^((R_B - R_A)/400))
+    const expected = 1 / (1 + Math.pow(10, (opponentElo - playerElo) / 400));
+    const score = isWin ? 1 : 0;
+    const k = GAME_CONFIG.ELO_CONFIG.K_FACTOR;
+    const rawDelta = k * (score - expected);
+    return Math.round(rawDelta);
+  }
+
+  updateElo(opponentElo, isWin) {
+    const oldElo = this.getElo();
+    const delta = this.calculateEloDelta(oldElo, opponentElo, isWin);
+    const newElo = Math.max(0, oldElo + delta);
+
+    this.state.elo = newElo;
+    this.saveState();
+
+    return {
+      oldElo,
+      newElo,
+      delta,
+      league: this.getLeague(newElo),
+    };
+  }
+
+  // --- TRAITEMENT COMBAT AVEC ÉLO ET COINS ---
 
   processBattleResult(isPlayerWinner, playerChar, oppChar) {
     this.state.stats.totalBattles++;
 
-    let pointsGained = 0;
+    const playerElo = this.getElo();
+    const oppElo = oppChar.elo || Math.round(oppChar.power * 14 + 100);
+
+    // Calcul Élo réel
+    const eloResult = this.updateElo(oppElo, isPlayerWinner);
+
+    // Calcul de l'or de récompense (affecté par l'Atelier Prime d'Arène)
+    let coinsGained = 0;
     let xpGained = 0;
+    const arenaBonusLvl = this.state.workshopUpgrades?.arena_bonus || 0;
+    const arenaMult = arenaBonusLvl > 0 ? (GAME_CONFIG.WORKSHOP_UPGRADES.arena_bonus.multipliers[arenaBonusLvl - 1] || 1.0) : 1.0;
 
     if (isPlayerWinner) {
       this.state.stats.wins++;
-      pointsGained = GAME_CONFIG.REWARDS.WIN_POINTS;
+      coinsGained = Math.round(GAME_CONFIG.REWARDS.WIN_COINS_BASE * arenaMult);
       xpGained = GAME_CONFIG.REWARDS.WIN_XP;
 
-      // Bonus si l'adversaire avait un Power supérieur
-      if (oppChar.power > playerChar.power) {
-        const diff = oppChar.power - playerChar.power;
-        const underdogBonus = diff * GAME_CONFIG.REWARDS.UNDERDOG_MULTIPLIER;
-        pointsGained += underdogBonus;
+      // Bonus si l'adversaire avait un Elo supérieur
+      if (oppElo > playerElo) {
+        coinsGained += Math.min(60, Math.round((oppElo - playerElo) * 0.2));
       }
     } else {
       this.state.stats.losses++;
-      pointsGained = GAME_CONFIG.REWARDS.LOSS_POINTS;
+      coinsGained = GAME_CONFIG.REWARDS.LOSS_COINS_BASE;
       xpGained = GAME_CONFIG.REWARDS.LOSS_XP;
     }
 
-    this.addPoints(pointsGained);
+    this.addCoins(coinsGained);
     const xpResult = this.addXP(xpGained);
 
-    // Vérification des succès
     const newAchievements = this.checkAchievements(playerChar, oppChar, isPlayerWinner);
 
     return {
-      pointsGained,
+      coinsGained,
       xpGained,
+      eloResult,
       leveledUp: xpResult.leveledUp,
       newAchievements,
     };
@@ -165,12 +449,14 @@ export class ProgressionManager {
 
   // --- TRAITEMENT GÉNÉRATION ---
 
-  processGeneration(character) {
+  processGeneration(character, isLuckySpin = false) {
     this.state.stats.totalGenerations++;
 
     if (character.rarity === "legendary") {
       this.state.stats.legendariesCount++;
       this.addXP(GAME_CONFIG.REWARDS.LEGENDARY_DISCOVER_XP);
+    } else if (isLuckySpin) {
+      this.addXP(GAME_CONFIG.REWARDS.LUCKY_SPIN_XP);
     } else {
       this.addXP(GAME_CONFIG.REWARDS.GENERATE_XP);
     }
@@ -179,7 +465,6 @@ export class ProgressionManager {
       this.state.stats.highestPower = character.power;
     }
 
-    // Enregistrement des découvertes
     if (character.powerId && !this.state.stats.discoveredPowers.includes(character.powerId)) {
       this.state.stats.discoveredPowers.push(character.powerId);
     }
@@ -199,150 +484,128 @@ export class ProgressionManager {
     return { newlyDiscoveredSynergies, newAchievements };
   }
 
-  // --- DAILY (Section 27 & 28) ---
+  // --- RECYCLAGE EN PIÈCES D'OR ---
 
-  isDailyAvailable() {
-    const now = Date.now();
-    const elapsed = now - (this.state.lastDailyTimestamp || 0);
-    return elapsed >= GAME_CONFIG.DAILY_COOLDOWN_MS;
-  }
+  recycleCharacter(character) {
+    const rarityMeta = GAME_CONFIG.RARITIES[character.rarity] || GAME_CONFIG.RARITIES.common;
+    const synCount = character.synergies ? character.synergies.length : 0;
+    const rawVal = (character.power * 1.2) + (synCount * 25);
+    const coinsAwarded = Math.max(35, Math.round(rawVal * (rarityMeta.multiplier || 1.0)));
 
-  getDailyRemainingTime() {
-    if (this.isDailyAvailable()) return null;
-    const now = Date.now();
-    const remainingMs = GAME_CONFIG.DAILY_COOLDOWN_MS - (now - this.state.lastDailyTimestamp);
-    if (remainingMs <= 0) return null;
-
-    const hours = Math.floor(remainingMs / (1000 * 60 * 60));
-    const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m`;
-  }
-
-  claimDaily() {
-    this.state.lastDailyTimestamp = Date.now();
-    this.addPoints(GAME_CONFIG.REWARDS.DAILY_BONUS_POINTS);
+    this.addCoins(coinsAwarded);
+    this.state.stats.totalRecycled = (this.state.stats.totalRecycled || 0) + 1;
     this.saveState();
+
+    return coinsAwarded;
   }
 
-  resetDaily() {
-    this.state.lastDailyTimestamp = 0;
-    this.saveState();
+  // --- ATELIER D'AMÉLIORATIONS (WORKSHOP) ---
+
+  getWorkshopUpgrades() {
+    if (!this.state.workshopUpgrades) {
+      this.state.workshopUpgrades = this.getDefaultState().workshopUpgrades;
+    }
+
+    // Réinitialisation journalière de l'achat d'urgence
+    const today = new Date().toDateString();
+    if (this.state.workshopUpgrades.last_emergency_date !== today) {
+      this.state.workshopUpgrades.last_emergency_date = today;
+      this.state.workshopUpgrades.emergency_count_today = 0;
+      this.saveState();
+    }
+
+    return this.state.workshopUpgrades;
   }
 
-  // --- INVOCATIONS HORAIRES (Section Équilibrage : 1 tirage par heure) ---
+  buyWorkshopUpgrade(upgradeId) {
+    const upgrades = this.getWorkshopUpgrades();
+    const def = GAME_CONFIG.WORKSHOP_UPGRADES[upgradeId];
+    if (!def) return { success: false, message: "Amélioration inconnue" };
 
-  checkAndRegenHourlySpins() {
-    const cfg = GAME_CONFIG.HOURLY_SPIN;
-    if (!this.state.hourlySpins) {
-      this.state.hourlySpins = {
-        available: cfg.STARTER_CHARGES,
-        lastRegenTimestamp: Date.now(),
+    if (def.isInstant) {
+      // Jeton d'Urgence (Achat direct d'une charge de tirage)
+      const countToday = upgrades.emergency_count_today || 0;
+      const cost = Math.round(def.baseCost * Math.pow(def.costMultiplier, countToday));
+
+      if (this.getCoins() < cost) {
+        return { success: false, message: `Pièces insuffisantes (${cost} 🪙 requis)` };
+      }
+
+      this.spendCoins(cost);
+      upgrades.emergency_count_today = countToday + 1;
+      this.addSpinCharges(1);
+      this.saveState();
+
+      return {
+        success: true,
+        message: `Charge de tirage obtenue ! (Coût: ${cost} 🪙)`,
+        newCoins: this.getCoins(),
       };
     }
 
-    const spins = this.state.hourlySpins;
-    if (spins.available < cfg.MAX_CHARGES) {
-      const now = Date.now();
-      const elapsed = now - (spins.lastRegenTimestamp || now);
-      if (elapsed >= cfg.REGEN_INTERVAL_MS) {
-        const recharged = Math.floor(elapsed / cfg.REGEN_INTERVAL_MS);
-        spins.available = Math.min(cfg.MAX_CHARGES, spins.available + recharged);
-        if (spins.available >= cfg.MAX_CHARGES) {
-          spins.lastRegenTimestamp = now;
-        } else {
-          spins.lastRegenTimestamp += recharged * cfg.REGEN_INTERVAL_MS;
-        }
-        this.saveState();
-      }
+    // Amélioration à niveaux
+    const currentLvl = upgrades[upgradeId] || 0;
+    if (currentLvl >= def.maxLevel) {
+      return { success: false, message: "Niveau maximum déjà atteint !" };
     }
-  }
 
-  getHourlySpinInfo() {
-    this.checkAndRegenHourlySpins();
-    const cfg = GAME_CONFIG.HOURLY_SPIN;
-    const spins = this.state.hourlySpins;
-
-    let timeRemainingMs = 0;
-    let countdownFormatted = "Plein";
-
-    if (spins.available < cfg.MAX_CHARGES) {
-      const now = Date.now();
-      const elapsed = now - (spins.lastRegenTimestamp || now);
-      timeRemainingMs = Math.max(0, cfg.REGEN_INTERVAL_MS - elapsed);
-      const minutes = Math.floor(timeRemainingMs / 60000);
-      const seconds = Math.floor((timeRemainingMs % 60000) / 1000);
-      countdownFormatted = `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+    const cost = def.costs[currentLvl];
+    if (this.getCoins() < cost) {
+      return { success: false, message: `Pièces insuffisantes (${cost} 🪙 requis)` };
     }
+
+    this.spendCoins(cost);
+    upgrades[upgradeId] = currentLvl + 1;
+    this.saveState();
 
     return {
-      available: spins.available,
-      max: cfg.MAX_CHARGES,
-      timeRemainingMs,
-      countdownFormatted,
-      canSpin: spins.available > 0,
+      success: true,
+      message: `${def.name} amélioré au niveau ${currentLvl + 1} !`,
+      newLevel: currentLvl + 1,
+      newCoins: this.getCoins(),
     };
   }
 
-  consumeHourlySpin() {
-    this.checkAndRegenHourlySpins();
-    const cfg = GAME_CONFIG.HOURLY_SPIN;
-    const spins = this.state.hourlySpins;
-
-    if (spins.available <= 0) return false;
-
-    // Si on était au stock maximum, démarrer le timer de recharge à cet instant
-    if (spins.available === cfg.MAX_CHARGES) {
-      spins.lastRegenTimestamp = Date.now();
-    }
-
-    spins.available--;
-    this.saveState();
-    return true;
-  }
-
-  addHourlySpins(count = 1) {
-    const cfg = GAME_CONFIG.HOURLY_SPIN;
-    if (!this.state.hourlySpins) {
-      this.state.hourlySpins = { available: cfg.STARTER_CHARGES, lastRegenTimestamp: Date.now() };
-    }
-    this.state.hourlySpins.available = Math.min(cfg.MAX_CHARGES + 5, this.state.hourlySpins.available + count);
-    this.saveState();
-  }
-
-  resetHourlyCooldown() {
-    const cfg = GAME_CONFIG.HOURLY_SPIN;
-    this.state.hourlySpins = {
-      available: cfg.MAX_CHARGES,
-      lastRegenTimestamp: Date.now(),
-    };
-    this.saveState();
-  }
-
-  // --- CLASSEMENT FICTIF (Section 26) ---
+  // --- CLASSEMENT ÉLO DYNAMIQUE ---
 
   getLeaderboard() {
-    const baseOpponents = [
-      { name: "Aurelius", points: 4950, title: "Maître Suprême" },
-      { name: "Valkyrie-7", points: 4120, title: "Duelliste d'Élite" },
-      { name: "Kage", points: 3450, title: "Ombre Vorace" },
-      { name: "Nebula", points: 2890, title: "Forge-Destin" },
-      { name: "Darius", points: 2200, title: "Invocateur" },
-      { name: "Solas", points: 1750, title: "Pisteur" },
-      { name: "Zephyr", points: 1300, title: "Gardien" },
-      { name: "Rook", points: 850, title: "Combattant" },
-      { name: "Nova", points: 420, title: "Novice" },
+    const playerElo = this.getElo();
+    const playerLeague = this.getLeague();
+
+    // Adversaires virtuels échelonnés autour du joueur
+    const virtualPlayers = [
+      { name: "Aurelius_IX", elo: 2450, title: "Légende du Destin" },
+      { name: "Valkyrie_FR", elo: 2150, title: "Grand Champion" },
+      { name: "Kage_Shadow", elo: 1850, title: "Maître de la Roue" },
+      { name: "CyberUnit_7", elo: 1550, title: "Stratège des Synergies" },
+      { name: "Darius_Iron", elo: 1300, title: "Duelliste Aléatoire" },
+      { name: "Solas_Wind", elo: 1100, title: "Initié du Hasard" },
+      { name: "Zephyr_Zero", elo: 950, title: "Initié du Hasard" },
+      { name: "Rook_Stone", elo: 780, title: "Apprenti des Roues" },
+      { name: "Nova_Rookie", elo: 500, title: "Apprenti des Roues" },
     ];
 
     const entries = [
-      ...baseOpponents,
-      { name: "Toi (Joueur)", points: this.state.points, isPlayer: true, title: this.getCurrentLevelInfo().title }
+      ...virtualPlayers.map(p => ({
+        ...p,
+        league: this.getLeague(p.elo),
+        isPlayer: false,
+      })),
+      {
+        name: "Toi (Joueur)",
+        elo: playerElo,
+        isPlayer: true,
+        title: this.getCurrentLevelInfo().title,
+        league: playerLeague,
+      },
     ];
 
-    entries.sort((a, b) => b.points - a.points);
+    entries.sort((a, b) => b.elo - a.elo);
     return entries.map((entry, index) => ({ rank: index + 1, ...entry }));
   }
 
-  // Synchronise les éléments découverts à partir de la collection actuelle et des générations
+  // --- SUCCÈS ---
+
   syncDiscoveredElements() {
     if (!this.state.stats) {
       this.state.stats = this.getDefaultState().stats;
@@ -375,8 +638,6 @@ export class ProgressionManager {
     }
   }
 
-  // --- SUCCÈS (Section 33) ---
-
   getAchievementsList() {
     return [
       {
@@ -394,18 +655,25 @@ export class ProgressionManager {
         check: () => this.state.stats.legendariesCount >= 1 || collectionManager.getAll().some(c => c.rarity === "legendary"),
       },
       {
-        id: "ten_characters",
-        title: "Collectionneur Émergent",
-        description: "Avoir collecté au moins 10 personnages.",
-        icon: "👥",
-        check: () => collectionManager.getAll().length >= 10,
+        id: "first_recycle",
+        title: "Alchimiste Économe",
+        description: "Recycler au moins une carte en pièces d'or.",
+        icon: "🪙",
+        check: () => (this.state.stats.totalRecycled || 0) >= 1,
       },
       {
-        id: "ten_wins",
-        title: "Vétéran de l'Arène",
-        description: "Remporter 10 victoires en combat.",
-        icon: "⚔️",
-        check: () => this.state.stats.wins >= 10,
+        id: "silver_league",
+        title: "Ascension : Argent",
+        description: "Atteindre la Ligue Argent (1 000 Élo).",
+        icon: "🥈",
+        check: () => this.getElo() >= 1000,
+      },
+      {
+        id: "gold_league",
+        title: "Champion de l'Or",
+        description: "Atteindre la Ligue Or (1 400 Élo).",
+        icon: "🥇",
+        check: () => this.getElo() >= 1400,
       },
       {
         id: "five_powers",
@@ -422,18 +690,11 @@ export class ProgressionManager {
         check: () => (this.state.stats.discoveredSynergies || []).length >= 10,
       },
       {
-        id: "giant_slayer",
-        title: "Tueur de Colosse",
-        description: "Battre un adversaire possédant un Power supérieur au vôtre.",
-        icon: "🗡️",
-        check: (player, opp, isWin) => isWin && opp && player && opp.power > player.power,
-      },
-      {
-        id: "wheel_addict",
-        title: "Roue de l'Infini",
-        description: "Générer au moins 30 personnages.",
-        icon: "🎡",
-        check: () => this.state.stats.totalGenerations >= 30,
+        id: "ten_wins",
+        title: "Gladiateur Inébranlable",
+        description: "Remporter 10 victoires en combat.",
+        icon: "⚔️",
+        check: () => this.state.stats.wins >= 10,
       },
     ];
   }
@@ -448,7 +709,7 @@ export class ProgressionManager {
         try {
           if (ach.check(playerChar, oppChar, isWin)) {
             this.state.unlockedAchievements[ach.id] = new Date().toISOString();
-            this.addPoints(50);
+            this.addCoins(75);
             this.addXP(100);
             newlyUnlocked.push(ach);
           }
@@ -471,3 +732,4 @@ export class ProgressionManager {
 }
 
 export const progressionManager = new ProgressionManager();
+

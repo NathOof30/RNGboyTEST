@@ -1,5 +1,5 @@
 /**
- * POINT D'ENTRÉE PRINCIPAL DE L'APPLICATION WHEELBORN
+ * POINT D'ENTRÉE PRINCIPAL DE L'APPLICATION WHEELBORN — V2
  * Orchestration des vues, synchronisation des données et gestion des événements globaux.
  */
 
@@ -10,7 +10,7 @@ import { WheelUI } from "./ui/wheelUI.js";
 import { CollectionUI } from "./ui/collectionUI.js";
 import { BattleUI } from "./ui/battleUI.js";
 import { DevUI } from "./ui/devUI.js";
-import { renderDailyView, renderLeaderboardView, renderStatsView } from "./ui/extrasUI.js";
+import { renderWorkshopView, renderLeaderboardView, renderStatsView } from "./ui/extrasUI.js";
 
 class App {
   constructor() {
@@ -42,8 +42,7 @@ class App {
     this.updateHeaderStats();
     setInterval(() => this.updateHeaderStats(), 1000);
 
-    // 4. Si la collection est vide au tout premier lancement, on peut proposer de démarrer
-    console.log("🎮 WHEELBORN Prototype initialisé avec succès !");
+    console.log("🎮 WHEELBORN V2 (Micro-sessions & Atelier) initialisé avec succès !");
   }
 
   bindNavigation() {
@@ -103,8 +102,8 @@ class App {
       this.collectionUI.refreshGrid();
     } else if (viewId === "view-combat") {
       this.battleUI.render();
-    } else if (viewId === "view-daily") {
-      this.renderDailySection();
+    } else if (viewId === "view-workshop") {
+      this.renderWorkshopSection();
     } else if (viewId === "view-leaderboard") {
       const el = document.getElementById("view-leaderboard");
       if (el) renderLeaderboardView(el);
@@ -121,16 +120,10 @@ class App {
     this.switchView("view-combat");
   }
 
-  renderDailySection() {
-    const el = document.getElementById("view-daily");
+  renderWorkshopSection() {
+    const el = document.getElementById("view-workshop");
     if (!el) return;
-
-    renderDailyView(el, () => {
-      // Déclenche une génération quotidienne spéciale
-      progressionManager.claimDaily();
-      this.switchView("view-generator");
-      this.wheelUI.startGeneration(false, { isDaily: true });
-    });
+    renderWorkshopView(el, () => this.handleDataUpdated());
   }
 
   handleDataUpdated() {
@@ -138,29 +131,27 @@ class App {
     if (this.currentView === "view-collection") {
       this.collectionUI.refreshGrid();
     }
-    if (this.currentView === "view-daily") {
-      this.renderDailySection();
+    if (this.currentView === "view-workshop") {
+      this.renderWorkshopSection();
     }
   }
 
   updateHeaderStats() {
-    const countEl = document.getElementById("header-char-count");
     const pointsEl = document.getElementById("header-points");
-    const levelEl = document.getElementById("header-level");
+    const eloEl = document.getElementById("header-elo");
     const collBadge = document.getElementById("nav-coll-badge");
-    const dailyBadge = document.getElementById("nav-daily-badge");
     const spinsValEl = document.getElementById("header-spins-val");
     const spinsTimerEl = document.getElementById("header-spins-timer");
+    const arenaValEl = document.getElementById("header-arena-val");
 
     const collCount = collectionManager.getAll().length;
-    const points = progressionManager.state.points;
-    const lvlInfo = progressionManager.getCurrentLevelInfo();
-    const dailyAvail = progressionManager.isDailyAvailable();
-    const spinInfo = progressionManager.getHourlySpinInfo();
+    const coins = progressionManager.getCoins();
+    const elo = progressionManager.getElo();
+    const spinInfo = progressionManager.getSpinEnergyInfo();
+    const arenaInfo = progressionManager.getArenaTicketInfo();
 
-    if (countEl) countEl.textContent = collCount;
-    if (pointsEl) pointsEl.textContent = points.toLocaleString();
-    if (levelEl) levelEl.textContent = lvlInfo.level;
+    if (pointsEl) pointsEl.textContent = coins.toLocaleString();
+    if (eloEl) eloEl.textContent = elo.toLocaleString();
     if (collBadge) collBadge.textContent = collCount;
 
     if (spinsValEl) spinsValEl.textContent = `${spinInfo.available}/${spinInfo.max}`;
@@ -174,9 +165,8 @@ class App {
       }
     }
 
-    if (dailyBadge) {
-      dailyBadge.textContent = dailyAvail ? "Prêt" : "⏳";
-      dailyBadge.style.background = dailyAvail ? "#10b981" : "rgba(0,0,0,0.3)";
+    if (arenaValEl) {
+      arenaValEl.textContent = `${arenaInfo.available}/${arenaInfo.max}`;
     }
   }
 }
@@ -185,3 +175,4 @@ class App {
 document.addEventListener("DOMContentLoaded", () => {
   window.app = new App();
 });
+

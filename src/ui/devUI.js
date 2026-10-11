@@ -54,17 +54,18 @@ export class DevUI {
               </div>
             </div>
 
-            <!-- GESTION PROGRESSION & DAILY -->
+            <!-- GESTION PROGRESSION V2 & ÉNERGIES -->
             <div class="dev-box">
-              <h4>⭐ Progression & Invocations</h4>
+              <h4>⭐ Progression & Économie V2</h4>
               <div class="dev-btn-group">
-                <button class="btn btn-outline btn-sm" id="dev-add-points">+1 000 Points</button>
+                <button class="btn btn-outline btn-sm" id="dev-add-coins">🪙 +1 000 Pièces</button>
                 <button class="btn btn-outline btn-sm" id="dev-add-xp">+500 XP</button>
-                <button class="btn btn-secondary btn-sm" id="dev-reset-daily">🕒 Reset Daily</button>
+                <button class="btn btn-warning btn-sm" id="dev-trigger-pity">🌟 Jauge Chance 9/10</button>
               </div>
               <div class="dev-btn-group" style="margin-top: 8px;">
-                <button class="btn btn-outline btn-sm" id="dev-add-spin">🎟️ +2 Invocations</button>
-                <button class="btn btn-secondary btn-sm" id="dev-reset-hourly">⚡ Reset Cooldown Horaire</button>
+                <button class="btn btn-outline btn-sm" id="dev-add-spin">🎟️ +3 Invocations</button>
+                <button class="btn btn-outline btn-sm" id="dev-add-tickets">⚔️ +5 Tickets Arène</button>
+                <button class="btn btn-secondary btn-sm" id="dev-refill-energy">⚡ Énergies au max</button>
               </div>
               <div class="dev-btn-group" style="margin-top: 8px;">
                 <button class="btn btn-danger btn-sm" id="dev-clear-coll">🗑️ Vider collection</button>
@@ -148,10 +149,10 @@ export class DevUI {
       this.notifyChange();
     });
 
-    // Progression
-    this.container.querySelector("#dev-add-points")?.addEventListener("click", () => {
-      progressionManager.addPoints(1000);
-      showToast("+1 000 Points ajoutés !", "success");
+    // Progression & Économie V2
+    this.container.querySelector("#dev-add-coins")?.addEventListener("click", () => {
+      progressionManager.addCoins(1000);
+      showToast("+1 000 Pièces d'or ajoutées ! 🪙", "success");
       this.notifyChange();
     });
 
@@ -161,21 +162,29 @@ export class DevUI {
       this.notifyChange();
     });
 
-    this.container.querySelector("#dev-reset-daily")?.addEventListener("click", () => {
-      progressionManager.resetDaily();
-      showToast("Cooldown du Personnage Quotidien réinitialisé !", "info");
+    this.container.querySelector("#dev-trigger-pity")?.addEventListener("click", () => {
+      progressionManager.state.pityCounter = 9;
+      progressionManager.saveState();
+      showToast("Jauge de Chance fixée à 9/10 ! Prochain tirage = 🌟 SUPER SPIN garanti !", "warning");
       this.notifyChange();
     });
 
     this.container.querySelector("#dev-add-spin")?.addEventListener("click", () => {
-      progressionManager.addHourlySpins(2);
-      showToast("+2 Invocations ajoutées !", "success");
+      progressionManager.addSpinCharges(3);
+      showToast("+3 Invocations ajoutées !", "success");
       this.notifyChange();
     });
 
-    this.container.querySelector("#dev-reset-hourly")?.addEventListener("click", () => {
-      progressionManager.resetHourlyCooldown();
-      showToast("Cooldown horaire réinitialisé (Stock plein) !", "info");
+    this.container.querySelector("#dev-add-tickets")?.addEventListener("click", () => {
+      progressionManager.addArenaTickets(5);
+      showToast("+5 Tickets d'Arène ajoutés !", "success");
+      this.notifyChange();
+    });
+
+    this.container.querySelector("#dev-refill-energy")?.addEventListener("click", () => {
+      progressionManager.addSpinCharges(3);
+      progressionManager.addArenaTickets(5);
+      showToast("Énergies au maximum (Invocations + Tickets) !", "info");
       this.notifyChange();
     });
 

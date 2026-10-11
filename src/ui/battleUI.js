@@ -31,8 +31,51 @@ export class BattleUI {
     this.currentTurnIndex = 0;
     this.battleResult = null;
     this.activeTimeouts = [];
+    this.tickerInterval = null;
 
     this.render();
+    this.startTicker();
+  }
+
+  startTicker() {
+    if (this.tickerInterval) clearInterval(this.tickerInterval);
+    this.tickerInterval = setInterval(() => {
+      this.updateTicketsDisplay();
+    }, 1000);
+  }
+
+  updateTicketsDisplay() {
+    const arenaInfo = progressionManager.getArenaTicketInfo();
+    const ticketsVal = this.container.querySelector("#arena-tickets-val");
+    const ticketsTimer = this.container.querySelector("#arena-tickets-timer");
+    const btnStart = this.container.querySelector("#btn-start-battle");
+    const btnInstant = this.container.querySelector("#btn-start-instant");
+
+    if (ticketsVal) {
+      ticketsVal.textContent = `${arenaInfo.available} / ${arenaInfo.max}`;
+      ticketsVal.className = `arena-number ${arenaInfo.available > 0 ? 'text-win' : 'text-loss'}`;
+    }
+
+    if (ticketsTimer) {
+      if (arenaInfo.available >= arenaInfo.max) {
+        ticketsTimer.innerHTML = `<span class="text-win">✓ Stock plein (${arenaInfo.max}/${arenaInfo.max})</span>`;
+      } else {
+        ticketsTimer.innerHTML = `⏳ Recharge dans : <strong>${arenaInfo.countdownFormatted}</strong>`;
+      }
+    }
+
+    if (btnStart) {
+      if (!arenaInfo.canBattle) {
+        btnStart.textContent = `⏳ Pas de Ticket (${arenaInfo.countdownFormatted})`;
+        btnStart.disabled = true;
+      } else {
+        btnStart.textContent = `⚔️ Lancer le combat (1 Ticket)`;
+        btnStart.disabled = false;
+      }
+    }
+    if (btnInstant) {
+      btnInstant.disabled = !arenaInfo.canBattle;
+    }
   }
 
   setPlayerCharacter(characterId) {
@@ -52,15 +95,45 @@ export class BattleUI {
     const selectedPlayerChar = collectionManager.getById(this.selectedPlayerCharId);
 
     // Initialiser les adversaires de défi si non fait
+    const playerElo = progressionManager.getElo();
+    const playerLeague = progressionManager.getLeague(playerElo);
+
     if (this.challengers.length === 0) {
-      this.challengers = generateChallengersList(selectedPlayerChar ? selectedPlayerChar.power : 65);
+      this.challengers = generateChallengersList(selectedPlayerChar ? selectedPlayerChar.power : 65, playerElo);
     }
 
     this.container.innerHTML = `
       <div class="battle-wrapper">
         <div class="battle-header">
           <h2>⚔️ Arène de Combat</h2>
-          <p class="section-subtitle">Affrontez des rivaux simulés ou testez deux personnages de votre collection</p>
+          <p class="section-subtitle">Affrontez des rivaux réels ou simulés selon votre classement Élo et grimpez les ligues</p>
+        </div>
+
+        <!-- BANDEAU DES TICKETS D'ARÈNE ET ÉLO -->
+        <div class="arena-status-bar">
+          <div class="arena-status-card">
+            <span class="arena-icon">🎟️</span>
+            <div class="arena-info-text">
+              <div class="arena-count-row">
+                <span class="arena-label">Tickets d'Arène :</span>
+                <span class="arena-number" id="arena-tickets-val">5 / 5</span>
+              </div>
+              <div class="arena-timer-row" id="arena-tickets-timer">Stock plein</div>
+            </div>
+          </div>
+
+          <div class="arena-status-card arena-elo-card">
+            <span class="arena-icon" id="arena-league-icon">${playerLeague.icon}</span>
+            <div class="arena-info-text">
+              <div class="arena-count-row">
+                <span class="arena-label">Classement ÉLO :</span>
+                <span class="arena-number gold-text" id="arena-elo-val">${playerElo}</span>
+              </div>
+              <div class="arena-timer-row" id="arena-league-name" style="color: ${playerLeague.color}">
+                Ligue ${playerLeague.name}
+              </div>
+            </div>
+          </div>
         </div>
 
         ${!hasFighters ? `
@@ -114,7 +187,7 @@ export class BattleUI {
 
                 <div class="action-buttons-stack">
                   <button class="btn btn-primary btn-large" id="btn-start-battle">
-                    ⚔️ Lancer le combat
+                    ⚔️ Lancer le combat (1 Ticket)
                   </button>
                   <button class="btn btn-secondary btn-fast" id="btn-start-instant" title="Résultat sans attendre l'animation">
                     ⚡ Combat instantané
@@ -141,9 +214,9 @@ export class BattleUI {
                       <div class="challenger-item ${idx === 0 ? 'selected' : ''}" data-idx="${idx}">
                         <div class="challenger-top">
                           <span class="chal-rank">${ch.arenaRank}</span>
-                          <span class="chal-power">Power ${ch.power}</span>
+                          <span class="chal-power">Élo ${ch.elo || 1000}</span>
                         </div>
-                        <div class="chal-name">${ch.name} (${ch.race} • ${ch.weapon})</div>
+                        <div class="chal-name">${ch.name} (${ch.race} • Power ${ch.power})</div>
                       </div>
                     `).join("")}
                   </div>
@@ -152,7 +225,7 @@ export class BattleUI {
                   </div>
                 ` : `
                   <div class="auto-opponent-banner">
-                    Adversaire sélectionné automatiquement selon votre puissance.
+                    Adversaire sélectionné automatiquement selon votre classement Élo.
                     <button class="btn btn-outline btn-sm" id="btn-reroll-opp" style="margin-top: 8px;">
                       🔄 Changer d'adversaire
                     </button>
@@ -330,10 +403,11 @@ export class BattleUI {
     if (!oppPreview) return;
 
     const playerChar = collectionManager.getById(this.selectedPlayerCharId);
+    const playerElo = progressionManager.getElo();
 
     if (this.currentMode === "quick") {
       if (!this.selectedOpponent) {
-        this.selectedOpponent = generateQuickOpponent(playerChar);
+        this.selectedOpponent = generateQuickOpponent(playerChar, playerElo);
       }
       oppPreview.innerHTML = renderCharacterCard(this.selectedOpponent);
     } else if (this.currentMode === "challenge") {
@@ -357,9 +431,24 @@ export class BattleUI {
       return;
     }
 
-    if (!this.selectedOpponent) {
-      this.selectedOpponent = generateQuickOpponent(playerChar);
+    const arenaInfo = progressionManager.getArenaTicketInfo();
+    if (!arenaInfo.canBattle) {
+      showToast(
+        `⏳ <strong>Aucun ticket d'Arène disponible !</strong><br>Prochaine recharge dans ${arenaInfo.countdownFormatted}.`,
+        "warning"
+      );
+      return;
     }
+
+    const playerElo = progressionManager.getElo();
+    if (!this.selectedOpponent) {
+      this.selectedOpponent = generateQuickOpponent(playerChar, playerElo);
+    }
+
+    // Consommer 1 ticket d'arène
+    progressionManager.consumeArenaTicket();
+    this.updateTicketsDisplay();
+    if (this.onBattleFinished) this.onBattleFinished();
 
     const inputSeed = this.container.querySelector("#input-seed");
     const seed = inputSeed && inputSeed.value ? Number(inputSeed.value) : Math.floor(Math.random() * 900000 + 100000);
@@ -541,8 +630,15 @@ export class BattleUI {
     }
 
     if (resRewards) {
+      const elo = progResult.eloResult;
       resRewards.innerHTML = `
-        <div class="reward-chip">+${progResult.pointsGained} Points</div>
+        <div class="reward-chip chip-gold">🪙 +${progResult.coinsGained} Pièces</div>
+        <div class="reward-chip ${elo.delta >= 0 ? 'chip-elo-win' : 'chip-elo-loss'}">
+          ⚔️ ${elo.delta >= 0 ? '+' : ''}${elo.delta} Élo (Total: ${elo.newElo})
+        </div>
+        <div class="reward-chip" style="border-color: ${elo.league.color}">
+          ${elo.league.icon} Ligue ${elo.league.name}
+        </div>
         <div class="reward-chip">+${progResult.xpGained} XP</div>
         ${progResult.leveledUp ? '<div class="reward-chip chip-levelup">🎉 NIVEAU SUPÉRIEUR !</div>' : ''}
       `;
@@ -551,9 +647,20 @@ export class BattleUI {
     // Succès débloqués
     if (progResult.newAchievements?.length > 0) {
       progResult.newAchievements.forEach(ach => {
-        showToast(`🏆 <strong>Succès débloqué :</strong> ${ach.title} !`, "achievement");
+        showToast(`🏆 <strong>Succès débloqué :</strong> ${ach.title} ! (+75 🪙)`, "achievement");
       });
     }
+
+    // Mettre à jour l'en-tête du composant
+    const eloVal = this.container.querySelector("#arena-elo-val");
+    const leagueName = this.container.querySelector("#arena-league-name");
+    const leagueIcon = this.container.querySelector("#arena-league-icon");
+    if (eloVal) eloVal.textContent = progResult.eloResult.newElo;
+    if (leagueName) {
+      leagueName.textContent = `Ligue ${progResult.eloResult.league.name}`;
+      leagueName.style.color = progResult.eloResult.league.color;
+    }
+    if (leagueIcon) leagueIcon.textContent = progResult.eloResult.league.icon;
 
     resModal?.classList.remove("hidden");
   }

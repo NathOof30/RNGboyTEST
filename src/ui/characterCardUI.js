@@ -42,7 +42,7 @@ export function renderCharacterCard(char, options = {}) {
       <div class="card-header">
         <div class="name-block">
           <h3 class="char-name">${char.name}</h3>
-          ${char.isDaily ? '<span class="daily-pill" title="Personnage Quotidien Spécial">✨ DAILY</span>' : ''}
+          ${char.isLuckySpin ? '<span class="daily-pill" title="Issu du Super Spin (Jauge de Chance)">🌟 SUPER SPIN</span>' : ''}
           ${char.creatorName ? `
             <span class="creator-badge ${char.isPlayerCreated ? 'badge-player-author' : 'badge-bot-author'}">
               ${char.isPlayerCreated ? '👤 ' + char.creatorName : '🤖 ' + char.creatorName}
@@ -70,7 +70,7 @@ export function renderCharacterCard(char, options = {}) {
       <div class="power-banner">
         <span class="power-label">POWER</span>
         <span class="power-value">${char.power}</span>
-        <span class="char-value-tag" title="Valeur estimée">🪙 ${char.value || char.power * 8}</span>
+        <span class="char-value-tag" title="Valeur de recyclage">🪙 +${char.recycleValue || Math.round(char.power * 1.2)}</span>
       </div>
 
       <div class="stats-bars">

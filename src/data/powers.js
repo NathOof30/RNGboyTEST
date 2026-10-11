@@ -1,7 +1,10 @@
 /**
- * DÉFINITION DES POUVOIRS (Section 9)
- * Chaque pouvoir introduit des effets actifs ou passifs durant le combat :
- * DoT (dégâts sur la durée), débuffs, soins, esquives ou critiques.
+ * DÉFINITION DES POUVOIRS (Paliers Communs, Rares et Mythiques)
+ * 
+ * Hiérarchisation des probabilités d'obtention :
+ * - Communs (~60%) : Feu, Poison
+ * - Rares (~28%) : Glace, Foudre, Régénération
+ * - Mythiques (~12%) : Gravité, Téléportation, Invisibilité
  */
 
 export const POWERS = [
@@ -9,6 +12,8 @@ export const POWERS = [
     id: "fire",
     name: "Feu",
     icon: "🔥",
+    tier: "common",
+    tierLabel: "Commun",
     description: "Brûle la cible, infligeant des dégâts continus sur plusieurs tours.",
     type: "elemental",
     effect: {
@@ -17,41 +22,47 @@ export const POWERS = [
       duration: 3,
       label: "Brûlure",
     },
-    weight: 15,
-  },
-  {
-    id: "ice",
-    name: "Glace",
-    icon: "❄️",
-    description: "Gèle les articulations adverses, réduisant drastiquement leur vitesse.",
-    type: "elemental",
-    effect: {
-      type: "slow",
-      speedReductionPercent: 35,
-      freezeChance: 0.15, // 15% chance de geler sur place
-      label: "Ralentissement glacial",
-    },
-    weight: 14,
+    weight: 30, // Commun
   },
   {
     id: "poison",
     name: "Poison",
     icon: "🧪",
+    tier: "common",
+    tierLabel: "Commun",
     description: "Toxine mortelle qui s'intensifie à chaque tour de combat.",
     type: "elemental",
     effect: {
       type: "poison",
       baseDamage: 5,
-      ramping: 5, // 5 puis 10 puis 15 dégâts
+      ramping: 5,
       duration: 3,
       label: "Envenimement",
     },
-    weight: 14,
+    weight: 30, // Commun
+  },
+  {
+    id: "ice",
+    name: "Glace",
+    icon: "❄️",
+    tier: "rare",
+    tierLabel: "Rare",
+    description: "Gèle les articulations adverses, réduisant drastiquement leur vitesse.",
+    type: "elemental",
+    effect: {
+      type: "slow",
+      speedReductionPercent: 35,
+      freezeChance: 0.15,
+      label: "Ralentissement glacial",
+    },
+    weight: 10, // Rare
   },
   {
     id: "lightning",
     name: "Foudre",
     icon: "⚡",
+    tier: "rare",
+    tierLabel: "Rare",
     description: "Énergie électrique pure conférant une haute chance de coup critique.",
     type: "elemental",
     effect: {
@@ -60,12 +71,29 @@ export const POWERS = [
       critMultiplier: 1.8,
       label: "Choc foudroyant",
     },
-    weight: 13,
+    weight: 10, // Rare
+  },
+  {
+    id: "regeneration",
+    name: "Régénération",
+    icon: "💖",
+    tier: "rare",
+    tierLabel: "Rare",
+    description: "Restaure des points de vie de manière continue tout au long du duel.",
+    type: "vital",
+    effect: {
+      type: "heal",
+      healPerTurn: 12,
+      label: "Régénération cellulaire",
+    },
+    weight: 8, // Rare
   },
   {
     id: "gravity",
     name: "Gravité",
     icon: "🌌",
+    tier: "mythic",
+    tierLabel: "Mythique",
     description: "Manipule la masse : écrase la vitesse ennemie et affaiblit ses coups.",
     type: "cosmic",
     effect: {
@@ -74,38 +102,29 @@ export const POWERS = [
       damageReductionPercent: 15,
       label: "Pression gravitationnelle",
     },
-    weight: 11,
+    weight: 4, // Mythique
   },
   {
     id: "teleportation",
     name: "Téléportation",
     icon: "🌀",
+    tier: "mythic",
+    tierLabel: "Mythique",
     description: "Disparaît dans une faille spatiale pour éviter les attaques reçues.",
     type: "spatial",
     effect: {
       type: "dodge",
-      dodgeChance: 0.28, // 28% de chance d'éviter un coup
+      dodgeChance: 0.28,
       label: "Saut dimensionnel",
     },
-    weight: 11,
-  },
-  {
-    id: "regeneration",
-    name: "Régénération",
-    icon: "💖",
-    description: "Restaure des points de vie de manière continue tout au long du duel.",
-    type: "vital",
-    effect: {
-      type: "heal",
-      healPerTurn: 12,
-      label: "Régénération cellulaire",
-    },
-    weight: 12,
+    weight: 4, // Mythique
   },
   {
     id: "invisibility",
     name: "Invisibilité",
     icon: "👁️‍🗨️",
+    tier: "mythic",
+    tierLabel: "Mythique",
     description: "Se dissimule aux yeux de l'adversaire, garantissant l'esquive du 1er coup et un retour puissant.",
     type: "stealth",
     effect: {
@@ -115,6 +134,7 @@ export const POWERS = [
       ambushCritMultiplier: 1.6,
       label: "Camouflage optique",
     },
-    weight: 10,
+    weight: 4, // Mythique
   },
 ];
+

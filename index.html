@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="./src/style.css">
 </head>
 <body>
-  <!-- EN-TÊTE PRINCIPAL (Section 5) -->
+  <!-- EN-TÊTE PRINCIPAL (V2) -->
   <header class="app-header">
     <div class="header-container">
       <div class="logo-block" id="nav-logo">
@@ -20,22 +20,22 @@
       </div>
 
       <div class="player-badges">
-        <div class="stat-chip chip-spin" id="header-spins-chip" title="1 recharge toutes les heures (Max 2)">
+        <div class="stat-chip chip-spin" id="header-spins-chip" title="Recharge toutes les 4 minutes (Max 3)">
           <span>🎟️ Tirages :</span>
-          <span class="chip-val" id="header-spins-val">0/2</span>
+          <span class="chip-val" id="header-spins-val">0/3</span>
           <span class="chip-timer" id="header-spins-timer"></span>
         </div>
-        <div class="stat-chip">
-          <span>👥 Personnages :</span>
-          <span class="chip-val" id="header-char-count">0</span>
+        <div class="stat-chip chip-arena" id="header-arena-chip" title="Recharge toutes les 5 minutes (Max 5)">
+          <span>⚔️ Tickets :</span>
+          <span class="chip-val" id="header-arena-val">5/5</span>
         </div>
         <div class="stat-chip chip-gold">
-          <span>🪙 Points :</span>
+          <span>🪙 Pièces :</span>
           <span class="chip-val" id="header-points">0</span>
         </div>
-        <div class="stat-chip">
-          <span>⭐ Niv. :</span>
-          <span class="chip-val" id="header-level">1</span>
+        <div class="stat-chip chip-elo">
+          <span>🏆 Élo :</span>
+          <span class="chip-val gold-text" id="header-elo">1000</span>
         </div>
       </div>
 
@@ -50,7 +50,7 @@
     </div>
   </header>
 
-  <!-- NAVIGATION PAR ONGLETS (Section 5, 27, 26, 34) -->
+  <!-- NAVIGATION PAR ONGLETS (V2) -->
   <nav class="app-nav">
     <div class="nav-container">
       <button class="nav-btn active" data-target="view-generator">
@@ -62,8 +62,8 @@
       <button class="nav-btn" data-target="view-combat">
         ⚔️ Combat
       </button>
-      <button class="nav-btn" data-target="view-daily">
-        ✨ Quotidien <span class="badge-pill" id="nav-daily-badge">Prêt</span>
+      <button class="nav-btn" data-target="view-workshop">
+        🏛️ Atelier
       </button>
       <button class="nav-btn" data-target="view-leaderboard">
         🏆 Classement
@@ -79,7 +79,7 @@
     <section id="view-generator" class="view-section active"></section>
     <section id="view-collection" class="view-section"></section>
     <section id="view-combat" class="view-section"></section>
-    <section id="view-daily" class="view-section"></section>
+    <section id="view-workshop" class="view-section"></section>
     <section id="view-leaderboard" class="view-section"></section>
     <section id="view-stats" class="view-section"></section>
   </main>

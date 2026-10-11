@@ -98,13 +98,13 @@ export function calculatePower(stats, synergies = [], isUnstable = false) {
 }
 
 /**
- * Détermine la rareté (Section 12 & 37)
- * Soit tirée selon les tables de probabilité, soit ajustée par des stats hors-normes / synergies
+ * Détermine la rareté
+ * Si isLuckySpin est actif, utilise la table garantie (0% commun, 60% rare, 30% épique, 10% légendaire)
  */
-export function calculateRarity(power, synergiesCount, isDaily = false, forcedRarity = null, rng = Math.random) {
+export function calculateRarity(power, synergiesCount, isLuckySpin = false, forcedRarity = null, rng = Math.random) {
   if (forcedRarity) return forcedRarity;
 
-  const weights = isDaily ? GAME_CONFIG.DAILY_RARITY_WEIGHTS : GAME_CONFIG.RARITY_WEIGHTS;
+  const weights = isLuckySpin ? GAME_CONFIG.LUCKY_RARITY_WEIGHTS : GAME_CONFIG.RARITY_WEIGHTS;
 
   const pool = [
     { item: "common", weight: weights.common },
@@ -140,13 +140,27 @@ export function calculateValue(character) {
 }
 
 /**
- * Fonction maîtresse de génération d'un personnage (Section 6 & 15)
- * @param {Object} options { isDaily, seed, forcedRace, forcedWeapon, forcedPower, forcedRarity, maxStats }
+ * Calcule la valeur de recyclage en pièces d'or
+ */
+export function calculateRecycleValue(character) {
+  const rarityMult = GAME_CONFIG.RARITIES[character.rarity]?.multiplier || 1.0;
+  const synCount = character.synergies ? character.synergies.length : 0;
+  const rawVal = (character.power * 1.2) + (synCount * 25);
+  return Math.max(35, Math.round(rawVal * rarityMult));
+}
+
+/**
+ * Fonction maîtresse de génération d'un personnage (V2)
+ * @param {Object} options { isLuckySpin, seed, forcedRace, forcedWeapon, forcedPower, forcedRarity, maxStats, workshopUpgrades }
  */
 export function generateCharacter(options = {}) {
   const rng = options.seed !== undefined && options.seed !== null
     ? createPRNG(Number(options.seed) || 12345)
     : Math.random;
+
+  const upgrades = options.workshopUpgrades || {};
+  const magnetLvl = upgrades.rare_magnet || 0;
+  const forgeLvl = upgrades.hero_forge || 0;
 
   // 1. Choix ou tirage des roues (Race, Arme, Pouvoir)
   const race = options.forcedRace
@@ -157,9 +171,28 @@ export function generateCharacter(options = {}) {
     ? WEAPONS.find(w => w.id === options.forcedWeapon) || WEAPONS[0]
     : weightedChoice(WEAPONS.map(w => ({ item: w, weight: w.weight })), rng);
 
-  const power = options.forcedPower
-    ? POWERS.find(p => p.id === options.forcedPower) || POWERS[0]
-    : weightedChoice(POWERS.map(p => ({ item: p, weight: p.weight })), rng);
+  // Pour le Pouvoir : si LuckySpin ou Aimant à Pouvoirs, modifier la pondération
+  let powerPool;
+  if (options.forcedPower) {
+    powerPool = [{ item: POWERS.find(p => p.id === options.forcedPower) || POWERS[0], weight: 100 }];
+  } else if (options.isLuckySpin) {
+    // Super Spin : Pouvoirs Rares et Mythiques uniquement !
+    powerPool = POWERS.filter(p => p.tier === "rare" || p.tier === "mythic").map(p => ({
+      item: p,
+      weight: p.tier === "mythic" ? 15 : 20,
+    }));
+  } else {
+    powerPool = POWERS.map(p => {
+      let w = p.weight;
+      // Bonus de l'Aimant de l'Atelier
+      if (magnetLvl > 0 && (p.tier === "rare" || p.tier === "mythic")) {
+        w += magnetLvl * 3;
+      }
+      return { item: p, weight: w };
+    });
+  }
+
+  const power = weightedChoice(powerPool, rng);
 
   // 2. Évaluation des synergies préliminaires
   const charSummary = {
@@ -184,6 +217,12 @@ export function generateCharacter(options = {}) {
     };
   }
 
+  // Bonus passif de la Forge des Héros de l'Atelier
+  if (forgeLvl > 0) {
+    baseStats.hp += forgeLvl * 3;
+    baseStats.strength += forgeLvl * 2;
+  }
+
   // 4. Calcul des stats finales
   const finalStats = calculateStats(baseStats, race, weapon, synergies, rng);
 
@@ -194,7 +233,7 @@ export function generateCharacter(options = {}) {
   const rarity = calculateRarity(
     powerScore,
     synergies.length,
-    options.isDaily,
+    options.isLuckySpin,
     options.forcedRarity,
     rng
   );
@@ -208,13 +247,13 @@ export function generateCharacter(options = {}) {
   // 8. Identifiant unique
   const id = "char_" + Date.now().toString(36) + "_" + Math.random().toString(36).substring(2, 7);
 
-  // Assemblage de l'objet personnage complet (Section 38)
+  // Assemblage de l'objet personnage complet
   const character = {
     id,
     name,
     owner_id: "player_1",
     created_at: new Date().toISOString(),
-    isDaily: !!options.isDaily,
+    isLuckySpin: !!options.isLuckySpin,
     isUnstable,
 
     // Éléments tirés des roues
@@ -229,6 +268,7 @@ export function generateCharacter(options = {}) {
     power: power.name,
     powerId: power.id,
     powerIcon: power.icon,
+    powerTier: power.tier,
 
     // Statistiques
     hp: finalStats.hp,
@@ -249,11 +289,13 @@ export function generateCharacter(options = {}) {
     wins: 0,
     losses: 0,
 
-    // Valeur calculée
+    // Valeur calculée et recyclage
     value: 0,
+    recycleValue: 0,
   };
 
   character.value = calculateValue(character);
+  character.recycleValue = calculateRecycleValue(character);
 
   return character;
 }

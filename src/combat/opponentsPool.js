@@ -84,9 +84,20 @@ export function registerPlayerCardToCommunity(character, playerName = "Toi") {
 }
 
 /**
+ * Assure qu'un combattant possède un Élo cohérent avec son Power et le niveau du joueur
+ */
+function assignOpponentElo(char, playerElo = 1000) {
+  if (char.elo) return char.elo;
+  const powerDiff = (char.power - 65) * 12;
+  const variance = Math.floor(Math.random() * 50) - 25;
+  char.elo = Math.max(400, Math.round(playerElo + (powerDiff * 0.7) + variance));
+  return char.elo;
+}
+
+/**
  * Génère un adversaire fictif (Bot d'arène de secours)
  */
-export function generateFictitiousChallenger(targetPower = 65, roleTitle = "Challenger Fictif") {
+export function generateFictitiousChallenger(targetPower = 65, roleTitle = "Challenger Fictif", playerElo = 1000) {
   let bestCandidate = null;
   let minDiff = 999;
 
@@ -102,6 +113,7 @@ export function generateFictitiousChallenger(targetPower = 65, roleTitle = "Chal
   bestCandidate.isPlayerCreated = false;
   bestCandidate.isFictitious = true;
   bestCandidate.creatorName = `Bot Arène (${roleTitle})`;
+  assignOpponentElo(bestCandidate, playerElo);
   return bestCandidate;
 }
 
@@ -110,7 +122,7 @@ export function generateFictitiousChallenger(targetPower = 65, roleTitle = "Chal
  * 1. Cherche en priorité un personnage créé par un joueur (différence de power modérée).
  * 2. Si aucune carte joueur correspondante n'est trouvée, pioche un joueur fictif.
  */
-export function generateQuickOpponent(playerChar) {
+export function generateQuickOpponent(playerChar, playerElo = 1000) {
   const targetPower = playerChar ? playerChar.power : 65;
   const communityCards = getCommunityPlayerCards();
 
@@ -126,24 +138,25 @@ export function generateQuickOpponent(playerChar) {
     const chosen = { ...closePlayerCards[randomIndex] };
     chosen.isPlayerCreated = true;
     chosen.isFictitious = false;
+    assignOpponentElo(chosen, playerElo);
     return chosen;
   }
 
-  // 🤖 FALLBACK : AUCUNE CARTE JOUEUR DISPONIBLE DANS CETTE FOURCHETTE -> COMBATTANT FICTIF
-  return generateFictitiousChallenger(targetPower, "Rival Aléatoire");
+  // 🤖 FALLBACK : COMBATTANT FICTIF
+  return generateFictitiousChallenger(targetPower, "Rival Aléatoire", playerElo);
 }
 
 /**
  * Génère la liste des 4 défis d'arène en piochant en priorité dans les cartes joueurs
  */
-export function generateChallengersList(playerHighestPower = 65) {
+export function generateChallengersList(playerHighestPower = 65, playerElo = 1000) {
   const communityCards = getCommunityPlayerCards();
 
   const targets = [
-    { rank: "Initié", targetPower: Math.max(45, playerHighestPower - 8) },
-    { rank: "Rival", targetPower: playerHighestPower },
-    { rank: "Champion", targetPower: playerHighestPower + 6 },
-    { rank: "Boss Suprême", targetPower: playerHighestPower + 14 },
+    { rank: "Initié", targetPower: Math.max(45, playerHighestPower - 8), eloOffset: -80 },
+    { rank: "Rival", targetPower: playerHighestPower, eloOffset: 0 },
+    { rank: "Champion", targetPower: playerHighestPower + 6, eloOffset: +60 },
+    { rank: "Boss Suprême", targetPower: playerHighestPower + 14, eloOffset: +140 },
   ];
 
   return targets.map(t => {
@@ -155,11 +168,12 @@ export function generateChallengersList(playerHighestPower = 65) {
       challenger.arenaRank = t.rank;
       challenger.isPlayerCreated = true;
       challenger.isFictitious = false;
+      challenger.elo = Math.max(400, playerElo + t.eloOffset + Math.floor(Math.random() * 20 - 10));
       return challenger;
     }
 
     // Sinon, générer un combattant fictif
-    const fictitious = generateFictitiousChallenger(t.targetPower, t.rank);
+    const fictitious = generateFictitiousChallenger(t.targetPower, t.rank, playerElo + t.eloOffset);
     fictitious.arenaRank = t.rank;
     return fictitious;
   });

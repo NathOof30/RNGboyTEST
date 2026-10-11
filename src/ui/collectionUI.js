@@ -7,6 +7,8 @@
  */
 
 import { collectionManager } from "../collection/collectionManager.js";
+import { progressionManager } from "../progression/progressionManager.js";
+import { calculateRecycleValue } from "../generation/characterGenerator.js";
 import { renderCharacterCard } from "./characterCardUI.js";
 import { RACES } from "../data/races.js";
 import { POWERS } from "../data/powers.js";
@@ -97,7 +99,7 @@ export class CollectionUI {
           <p>Lancez les roues dans l'onglet Générer pour commencer votre collection !</p>
         </div>
 
-        <!-- MODAL DÉTAILS DU PERSONNAGE (Section 18) -->
+        <!-- MODAL DÉTAILS DU PERSONNAGE -->
         <div class="modal-overlay hidden" id="char-modal">
           <div class="modal-content modal-char-detail">
             <button class="modal-close" id="modal-close">×</button>
@@ -106,8 +108,8 @@ export class CollectionUI {
               <button class="btn btn-primary btn-large" id="btn-modal-combat">
                 ⚔️ Combattre avec ce personnage
               </button>
-              <button class="btn btn-outline-danger" id="btn-modal-delete">
-                🗑️ Libérer ce personnage
+              <button class="btn btn-warning" id="btn-modal-recycle">
+                🪙 Recycler en pièces
               </button>
             </div>
           </div>
@@ -168,17 +170,18 @@ export class CollectionUI {
       }
     });
 
-    const btnDelete = this.container.querySelector("#btn-modal-delete");
-    btnDelete?.addEventListener("click", () => {
+    const btnRecycle = this.container.querySelector("#btn-modal-recycle");
+    btnRecycle?.addEventListener("click", () => {
       if (this.selectedCharId) {
         const char = collectionManager.getById(this.selectedCharId);
-        if (confirm(`Êtes-vous sûr de vouloir libérer ${char?.name || 'ce personnage'} ?`)) {
-          collectionManager.removeCharacter(this.selectedCharId);
-          showToast(`🗑️ ${char?.name} a été libéré de votre collection.`, "info");
-          modal?.classList.add("hidden");
-          this.refreshGrid();
-          if (this.onCollectionChanged) this.onCollectionChanged();
-        }
+        if (!char) return;
+        const coins = progressionManager.recycleCharacter(char);
+        collectionManager.removeCharacter(this.selectedCharId);
+        showToast(`🪙 <strong>${char.name}</strong> a été recyclé pour <strong>+${coins} Pièces</strong> !`, "success");
+        this.selectedCharId = null;
+        modal?.classList.add("hidden");
+        this.refreshGrid();
+        if (this.onCollectionChanged) this.onCollectionChanged();
       }
     });
   }
@@ -223,6 +226,12 @@ export class CollectionUI {
     this.selectedCharId = characterId;
     const modal = this.container.querySelector("#char-modal");
     const modalBody = this.container.querySelector("#modal-char-body");
+    const btnRecycle = this.container.querySelector("#btn-modal-recycle");
+
+    if (btnRecycle) {
+      const recVal = char.recycleValue || calculateRecycleValue(char);
+      btnRecycle.innerHTML = `🪙 Recycler en pièces (+${recVal} 🪙)`;
+    }
 
     if (modal && modalBody) {
       modalBody.innerHTML = renderCharacterCard(char, { isDetail: true });

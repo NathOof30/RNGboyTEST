@@ -1,10 +1,10 @@
 /**
- * INTERFACE DE GÉNÉRATION DES ROUES (Sections 6, 15, 16, 42, 44 + Équilibrage Horaire)
+ * INTERFACE DE GÉNÉRATION DES ROUES — V2
  * 
- * - Régulation stricte : 1 tirage par heure (stocke jusqu'à 2 charges max)
- * - Rareté précieuse : chaque invocation compte
- * - Compte à rebours dynamique en temps réel
- * - Enregistrement automatique des cartes créées dans le pool communautaire pour l'arène
+ * - Régulation micro-session : 3 charges max, recharge rapide de 4 minutes
+ * - Jauge de Chance (Pity 10/10) : Déclenche le Super Spin garanti au 10ème tirage
+ * - Fin du "Jeter" : Recyclage valorisant en pièces d'or
+ * - Prise en compte des améliorations d'Atelier (Aimant, Forge)
  */
 
 import { RACES } from "../data/races.js";
@@ -32,29 +32,50 @@ export class WheelUI {
   }
 
   render() {
+    const pity = progressionManager.getPityInfo();
+
     this.container.innerHTML = `
       <div class="generator-wrapper">
         <div class="generator-header">
           <h2>🎡 Générateur de Personnages</h2>
-          <p class="section-subtitle">Chaque invocation est rare et précieuse. Forgez un combattant et bâtissez votre légende.</p>
+          <p class="section-subtitle">Chaque invocation alimente votre légende. Révélez des héros ou recyclez-les pour forger votre destinée.</p>
         </div>
 
-        <!-- BANDEAU DES CHARGES HORAIRES (1 tirage par heure) -->
-        <div class="spins-status-card" id="spins-status-card">
-          <div class="spins-status-left">
-            <span class="spins-icon">🎟️</span>
-            <div class="spins-info-text">
-              <div class="spins-count-row">
-                <span class="spins-label">Invocations disponibles :</span>
-                <span class="spins-number" id="spins-available-count">0 / 2</span>
-              </div>
-              <div class="spins-regen-row" id="spins-regen-text">
-                ⏳ Chargement...
+        <!-- DOUBLE BANDEAU : CHARGES & JAUGE DE CHANCE (PITY 10) -->
+        <div class="generator-stats-bar">
+          <!-- Carte Charges Invocations -->
+          <div class="spins-status-card" id="spins-status-card">
+            <div class="spins-status-left">
+              <span class="spins-icon">🎟️</span>
+              <div class="spins-info-text">
+                <div class="spins-count-row">
+                  <span class="spins-label">Charges disponibles :</span>
+                  <span class="spins-number" id="spins-available-count">0 / 3</span>
+                </div>
+                <div class="spins-regen-row" id="spins-regen-text">
+                  ⏳ Chargement...
+                </div>
               </div>
             </div>
+            <div class="spins-status-right">
+              <span class="spins-scarcity-hint" title="1 recharge automatique toutes les 4 minutes">⚡ +1 / 4 min</span>
+            </div>
           </div>
-          <div class="spins-status-right">
-            <span class="spins-scarcity-hint" title="1 recharge automatique toutes les heures (Max 2)">⚡ 1 recharge / heure</span>
+
+          <!-- Carte Jauge de Chance (Lucky Spin 10/10) -->
+          <div class="pity-status-card ${pity.isLuckyReady ? 'pity-ready' : ''}" id="pity-status-card">
+            <div class="pity-header-row">
+              <span class="pity-title">✨ Jauge de Chance</span>
+              <span class="pity-counter-badge" id="pity-badge">${pity.current} / 10</span>
+            </div>
+            <div class="pity-progress-bar-bg">
+              <div class="pity-progress-bar-fill" id="pity-progress-fill" style="width: ${pity.percent}%"></div>
+            </div>
+            <div class="pity-desc-row" id="pity-desc">
+              ${pity.isLuckyReady 
+                ? '<strong class="gold-text">🌟 SUPER SPIN ACTIVÉ !</strong> (Rare+ garanti, 0% Commun)' 
+                : 'Super Spin béni au 10ème tirage (0% Commun, Rareté accrue)'}
+            </div>
           </div>
         </div>
 
@@ -96,27 +117,27 @@ export class WheelUI {
           <button class="btn btn-primary btn-large btn-spin" id="btn-spin">
             🎰 Lancer les roues (1 Jeton)
           </button>
-          <button class="btn btn-secondary btn-fast" id="btn-spin-fast" title="Passe directement le résultat">
+          <button class="btn btn-secondary btn-fast" id="btn-spin-fast" title="Passe directement l'animation">
             ⚡ Tirage instantané
           </button>
-          <button class="btn btn-outline" id="btn-spin-10" title="Outil développeur pour tester les probabilités">
-            🎲 Générer 10 (Dev Test)
+          <button class="btn btn-outline" id="btn-spin-10" title="Générer 10 personnages d'un coup (Test Dev)">
+            🎲 Tirage x10 (Test)
           </button>
         </div>
 
         <!-- ZONE DE RÉVÉLATION DU PERSONNAGE -->
         <div class="reveal-zone hidden" id="reveal-zone">
-          <div class="reveal-banner">✨ NOUVEAU PERSONNAGE OBTENU !</div>
+          <div class="reveal-banner" id="reveal-banner">✨ NOUVEAU PERSONNAGE OBTENU !</div>
           <div class="reveal-card-container" id="reveal-card-container"></div>
           
           <div class="decision-box">
-            <p class="decision-prompt">Voulez-vous garder ce personnage dans votre collection ?</p>
+            <p class="decision-prompt">Que souhaitez-vous faire de ce personnage ?</p>
             <div class="decision-buttons">
               <button class="btn btn-success btn-large" id="btn-keep">
                 📥 Garder dans la collection
               </button>
-              <button class="btn btn-danger" id="btn-discard">
-                🗑️ Rejeter
+              <button class="btn btn-warning btn-large" id="btn-recycle">
+                🪙 Recycler en pièces
               </button>
             </div>
           </div>
@@ -145,14 +166,14 @@ export class WheelUI {
     const btnFast = this.container.querySelector("#btn-spin-fast");
     const btn10 = this.container.querySelector("#btn-spin-10");
     const btnKeep = this.container.querySelector("#btn-keep");
-    const btnDiscard = this.container.querySelector("#btn-discard");
+    const btnRecycle = this.container.querySelector("#btn-recycle");
 
     btnSpin?.addEventListener("click", () => this.handleSpinClick(false));
     btnFast?.addEventListener("click", () => this.handleSpinClick(true));
     btn10?.addEventListener("click", () => this.generateBatch(10));
 
     btnKeep?.addEventListener("click", () => this.handleKeep());
-    btnDiscard?.addEventListener("click", () => this.handleDiscard());
+    btnRecycle?.addEventListener("click", () => this.handleRecycle());
   }
 
   startTicker() {
@@ -163,7 +184,7 @@ export class WheelUI {
   }
 
   updateSpinsDisplay() {
-    const info = progressionManager.getHourlySpinInfo();
+    const info = progressionManager.getSpinEnergyInfo();
     const countEl = this.container.querySelector("#spins-available-count");
     const regenEl = this.container.querySelector("#spins-regen-text");
     const btnSpin = this.container.querySelector("#btn-spin");
@@ -178,18 +199,42 @@ export class WheelUI {
       if (info.available >= info.max) {
         regenEl.innerHTML = `<span class="text-win">✓ Stock plein (${info.max}/${info.max})</span>`;
       } else {
-        regenEl.innerHTML = `⏳ Prochain tirage dans : <strong>${info.countdownFormatted}</strong>`;
+        regenEl.innerHTML = `⏳ Recharge dans : <strong>${info.countdownFormatted}</strong>`;
       }
     }
 
-    // Gestion de l'état des boutons si 0 tirage
+    // Mise à jour de la jauge Pity
+    const pity = progressionManager.getPityInfo();
+    const pityBadge = this.container.querySelector("#pity-badge");
+    const pityFill = this.container.querySelector("#pity-progress-fill");
+    const pityCard = this.container.querySelector("#pity-status-card");
+    const pityDesc = this.container.querySelector("#pity-desc");
+
+    if (pityBadge) pityBadge.textContent = `${pity.current} / 10`;
+    if (pityFill) pityFill.style.width = `${pity.percent}%`;
+    if (pityCard) {
+      if (pity.isLuckyReady) {
+        pityCard.classList.add("pity-ready");
+      } else {
+        pityCard.classList.remove("pity-ready");
+      }
+    }
+    if (pityDesc) {
+      pityDesc.innerHTML = pity.isLuckyReady
+        ? '<strong class="gold-text">🌟 SUPER SPIN ACTIVÉ !</strong> (Rare+ garanti, 0% Commun)'
+        : 'Super Spin béni au 10ème tirage (0% Commun, Rareté accrue)';
+    }
+
+    // Gestion des boutons
     if (!this.isSpinning) {
       if (btnSpin) {
         if (info.available <= 0) {
-          btnSpin.textContent = `⏳ Recharge dans ${info.countdownFormatted}`;
+          btnSpin.textContent = `⏳ Recharge (${info.countdownFormatted})`;
           btnSpin.disabled = true;
         } else {
-          btnSpin.textContent = `🎰 Lancer les roues (1 Jeton)`;
+          btnSpin.innerHTML = pity.isLuckyReady
+            ? `🌟 <strong>LANCER LE SUPER SPIN</strong> (1 Jeton)`
+            : `🎰 Lancer les roues (1 Jeton)`;
           btnSpin.disabled = false;
         }
       }
@@ -200,43 +245,47 @@ export class WheelUI {
   }
 
   handleSpinClick(instant = false) {
-    const spinInfo = progressionManager.getHourlySpinInfo();
+    const spinInfo = progressionManager.getSpinEnergyInfo();
 
     if (!spinInfo.canSpin) {
       showToast(
-        `⏳ <strong>Aucun tirage disponible !</strong><br>Prochaine recharge dans ${spinInfo.countdownFormatted}. Rendez-vous sur le Daily ou patientez.`,
+        `⏳ <strong>Aucun tirage disponible !</strong><br>Recharge dans ${spinInfo.countdownFormatted} ou achetez un Jeton d'Urgence dans l'Atelier.`,
         "warning"
       );
       return;
     }
 
-    // Consommer 1 jeton horaire
-    progressionManager.consumeHourlySpin();
+    // Consommer 1 charge d'énergie
+    progressionManager.consumeSpinCharge();
+
+    // Avancement de la Jauge de Chance (Pity 10/10)
+    const pityOutcome = progressionManager.incrementPity();
+
     this.updateSpinsDisplay();
     if (this.onCollectionUpdated) this.onCollectionUpdated();
 
+    // Récupérer les upgrades actives de l'Atelier
+    const workshopUpgrades = progressionManager.getWorkshopUpgrades();
+
     // Lancer la génération
-    this.startGeneration(instant);
+    this.startGeneration(instant, {
+      isLuckySpin: pityOutcome.isLuckySpin,
+      workshopUpgrades,
+    });
   }
 
-  /**
-   * Lance la génération avec ou sans animation
-   */
   startGeneration(instant = false, options = {}) {
     if (this.isSpinning) return;
 
-    // Masquer les résultats précédents
     const revealZone = this.container.querySelector("#reveal-zone");
     const batchZone = this.container.querySelector("#batch-zone");
     revealZone?.classList.add("hidden");
     batchZone?.classList.add("hidden");
 
-    // Créer le personnage cible à l'avance
     const character = generateCharacter(options);
     this.pendingCharacter = character;
 
     if (instant) {
-      // Découverte instantanée
       this.displayReelOutcome(character);
       this.revealCharacter(character);
       return;
@@ -249,7 +298,6 @@ export class WheelUI {
     const reelWeapon = this.container.querySelector("#reel-weapon");
     const reelPower = this.container.querySelector("#reel-power");
 
-    // Lancer le défilement visuel des 3 rouleaux
     let intervalRace = setInterval(() => {
       const r = RACES[Math.floor(Math.random() * RACES.length)];
       if (reelRace) reelRace.innerHTML = `<span class="wheel-icon">${r.icon}</span><span class="wheel-label">${r.name}</span>`;
@@ -266,7 +314,6 @@ export class WheelUI {
       if (reelPower) reelPower.innerHTML = `<span class="wheel-icon">${p.icon}</span><span class="wheel-label">${p.name}</span>`;
     }, 60);
 
-    // Arrêts séquentiels avec suspense
     setTimeout(() => {
       clearInterval(intervalRace);
       if (reelRace) reelRace.innerHTML = `<span class="wheel-icon">${character.raceIcon}</span><span class="wheel-label">${character.race}</span>`;
@@ -300,41 +347,53 @@ export class WheelUI {
   revealCharacter(character) {
     const revealZone = this.container.querySelector("#reveal-zone");
     const cardContainer = this.container.querySelector("#reveal-card-container");
+    const revealBanner = this.container.querySelector("#reveal-banner");
+    const btnRecycle = this.container.querySelector("#btn-recycle");
+
     if (!revealZone || !cardContainer) return;
+
+    if (revealBanner) {
+      if (character.isLuckySpin) {
+        revealBanner.innerHTML = "🌟 <strong>SUPER SPIN DU DESTIN !</strong> Tirage béni d'élite !";
+        revealBanner.className = "reveal-banner reveal-banner-lucky";
+      } else {
+        revealBanner.innerHTML = "✨ NOUVEAU PERSONNAGE OBTENU !";
+        revealBanner.className = "reveal-banner";
+      }
+    }
+
+    if (btnRecycle) {
+      const recVal = character.recycleValue || 65;
+      btnRecycle.innerHTML = `🪙 Recycler (+${recVal} 🪙)`;
+    }
 
     cardContainer.innerHTML = renderCharacterCard(character, { isDetail: true });
     revealZone.classList.remove("hidden");
     revealZone.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-    // Effet sonore selon la rareté
     sound.playReveal(character.rarity);
 
-    // Notifications spéciales
     if (character.rarity === "legendary") {
-      showToast("🌟 <strong>LÉGENDAIRE !</strong> Un tirage exceptionnel extrêmement rare !", "success", 5000);
+      showToast("🌟 <strong>LÉGENDAIRE !</strong> Un tirage d'exception extrêmement prestigieux !", "success", 5000);
     }
     if (character.isUnstable) {
-      showToast("💥 <strong>COMBINAISON INSTABLE !</strong> Des effets spéciaux sont activés !", "warning");
+      showToast("💥 <strong>COMBINAISON INSTABLE !</strong> Des effets chaotiques sont activés !", "warning");
     }
   }
 
   handleKeep() {
     if (!this.pendingCharacter) return;
 
-    // 1. Sauvegarde dans la collection du joueur
     collectionManager.addCharacter(this.pendingCharacter);
-
-    // 2. Enregistrement dans le pool communautaire (pour les duels d'arène d'autres joueurs !)
     registerPlayerCardToCommunity(this.pendingCharacter, "Toi");
 
-    // 3. Traitement XP & Succès
-    const result = progressionManager.processGeneration(this.pendingCharacter);
+    const result = progressionManager.processGeneration(this.pendingCharacter, this.pendingCharacter.isLuckySpin);
 
     showToast(`✅ <strong>${this.pendingCharacter.name}</strong> ajouté à votre collection !`, "success");
 
     if (result.newAchievements?.length > 0) {
       result.newAchievements.forEach(ach => {
-        showToast(`🏆 <strong>Succès débloqué :</strong> ${ach.title} ! (+50 pts)`, "achievement");
+        showToast(`🏆 <strong>Succès débloqué :</strong> ${ach.title} ! (+75 🪙)`, "achievement");
       });
     }
 
@@ -346,22 +405,26 @@ export class WheelUI {
     if (this.onCollectionUpdated) this.onCollectionUpdated();
   }
 
-  handleDiscard() {
+  handleRecycle() {
     if (!this.pendingCharacter) return;
-    showToast(`🗑️ ${this.pendingCharacter.name} a été rejeté.`, "info");
+
+    const coinsEarned = progressionManager.recycleCharacter(this.pendingCharacter);
+    showToast(`🪙 <strong>${this.pendingCharacter.name}</strong> recyclé avec succès pour <strong>+${coinsEarned} Pièces</strong> !`, "success");
+
     this.pendingCharacter = null;
     const revealZone = this.container.querySelector("#reveal-zone");
     revealZone?.classList.add("hidden");
+
     this.updateSpinsDisplay();
+    if (this.onCollectionUpdated) this.onCollectionUpdated();
   }
 
-  /**
-   * Génération par lot (10 personnages pour le test dev, Section 16)
-   */
   generateBatch(count = 10) {
     const chars = [];
+    const workshopUpgrades = progressionManager.getWorkshopUpgrades();
+
     for (let i = 0; i < count; i++) {
-      chars.push(generateCharacter());
+      chars.push(generateCharacter({ workshopUpgrades }));
     }
 
     const revealZone = this.container.querySelector("#reveal-zone");
@@ -374,27 +437,38 @@ export class WheelUI {
     batchGrid.innerHTML = chars.map(c => `
       <div class="batch-item">
         ${renderCharacterCard(c)}
-        <button class="btn btn-primary btn-sm btn-batch-add" data-char-json='${encodeURIComponent(JSON.stringify(c))}'>
-          Conserver
-        </button>
+        <div class="batch-btn-row">
+          <button class="btn btn-primary btn-sm btn-batch-add" data-char-json='${encodeURIComponent(JSON.stringify(c))}'>
+            Conserver
+          </button>
+          <button class="btn btn-warning btn-sm btn-batch-recycle" data-char-json='${encodeURIComponent(JSON.stringify(c))}'>
+            Recycler (+${c.recycleValue} 🪙)
+          </button>
+        </div>
       </div>
     `).join("");
 
     batchZone.classList.remove("hidden");
     batchZone.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-    // Events pour chaque bouton
     batchGrid.querySelectorAll(".btn-batch-add").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const json = decodeURIComponent(btn.getAttribute("data-char-json"));
-        const char = JSON.parse(json);
+      btn.addEventListener("click", () => {
+        const char = JSON.parse(decodeURIComponent(btn.getAttribute("data-char-json")));
         collectionManager.addCharacter(char);
-        registerPlayerCardToCommunity(char, "Toi (Dev)");
+        registerPlayerCardToCommunity(char, "Toi (Test)");
         progressionManager.processGeneration(char);
-        btn.textContent = "✓ Conservé";
-        btn.classList.replace("btn-primary", "btn-secondary");
-        btn.disabled = true;
+        btn.parentElement.innerHTML = `<span class="text-win">✓ Conservé</span>`;
         showToast(`Ajouté : ${char.name}`, "success");
+        if (this.onCollectionUpdated) this.onCollectionUpdated();
+      });
+    });
+
+    batchGrid.querySelectorAll(".btn-batch-recycle").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const char = JSON.parse(decodeURIComponent(btn.getAttribute("data-char-json")));
+        const coins = progressionManager.recycleCharacter(char);
+        btn.parentElement.innerHTML = `<span class="gold-text">+${coins} 🪙 Recyclé</span>`;
+        showToast(`Recyclé : ${char.name} (+${coins} 🪙)`, "info");
         if (this.onCollectionUpdated) this.onCollectionUpdated();
       });
     });
@@ -403,7 +477,7 @@ export class WheelUI {
     btnKeepAll?.addEventListener("click", () => {
       chars.forEach(c => {
         collectionManager.addCharacter(c);
-        registerPlayerCardToCommunity(c, "Toi (Dev)");
+        registerPlayerCardToCommunity(c, "Toi (Test)");
         progressionManager.processGeneration(c);
       });
       showToast(`🎉 Les ${count} personnages ont été ajoutés à votre collection !`, "success");
@@ -422,3 +496,4 @@ export class WheelUI {
     btns.forEach(b => { b.disabled = disabled; });
   }
 }
+

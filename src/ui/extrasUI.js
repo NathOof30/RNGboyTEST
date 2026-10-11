@@ -1,61 +1,160 @@
 /**
- * VUES COMPLÉMENTAIRES (Sections 26, 27, 28, 32, 33, 34)
- * - Personnage du Jour (Daily)
- * - Classement (Leaderboard)
- * - Statistiques du Joueur & Succès (Achievements)
+ * VUES COMPLÉMENTAIRES — V2
+ * - Atelier d'Améliorations (Workshop) : Dépense des pièces en bonus permanents
+ * - Classement ÉLO (Leaderboard) : Ligues FIDE
+ * - Statistiques du Joueur & Succès
  */
 
 import { progressionManager } from "../progression/progressionManager.js";
 import { collectionManager } from "../collection/collectionManager.js";
+import { GAME_CONFIG } from "../data/config.js";
 import { SYNERGIES } from "../data/synergies.js";
 import { POWERS } from "../data/powers.js";
+import { showToast } from "./notifications.js";
 
-export function renderDailyView(container, onTriggerDaily) {
-  const isAvail = progressionManager.isDailyAvailable();
-  const remaining = progressionManager.getDailyRemainingTime();
+/**
+ * VUE ATELIER D'AMÉLIORATIONS (Remplace l'ancien Daily)
+ */
+export function renderWorkshopView(container, onWorkshopUpdated) {
+  const coins = progressionManager.getCoins();
+  const upgrades = progressionManager.getWorkshopUpgrades();
+  const defs = GAME_CONFIG.WORKSHOP_UPGRADES;
+
+  // Calcul du coût du jeton d'urgence
+  const emergencyCount = upgrades.emergency_count_today || 0;
+  const emergencyCost = Math.round(defs.emergency_spin.baseCost * Math.pow(defs.emergency_spin.costMultiplier, emergencyCount));
 
   container.innerHTML = `
-    <div class="daily-wrapper">
-      <div class="daily-card">
-        <div class="daily-icon-glow">🎁</div>
-        <h2>Personnage du Jour</h2>
-        <p class="daily-desc">
-          Une opportunité unique chaque jour : chances accrues d'obtenir des raretés Épiques et Légendaires,
-          accompagnée d'un bonus instantané de <strong>+200 Points</strong> !
+    <div class="workshop-wrapper">
+      <div class="workshop-header">
+        <div class="workshop-title-row">
+          <h2>🏛️ Atelier de Destin & Améliorations</h2>
+          <div class="workshop-coins-pill">
+            <span>🪙 Solde :</span>
+            <strong class="gold-text">${coins.toLocaleString()} Pièces</strong>
+          </div>
+        </div>
+        <p class="section-subtitle">
+          Investissez les pièces gagnées par le recyclage et vos victoires en arène pour renforcer vos futurs tirages et combats.
         </p>
+      </div>
 
-        <div class="daily-status-box">
-          ${isAvail ? `
-            <div class="daily-ready-badge">✨ PRÊT À FORGER</div>
-            <p class="daily-info-text">La Roue du Destin Quotidienne est disponible !</p>
-            <button class="btn btn-primary btn-large btn-glow" id="btn-claim-daily">
-              🌟 Lancer la Roue Quotidienne
-            </button>
-          ` : `
-            <div class="daily-cooldown-badge">⏳ COOLDOWN ACTIF</div>
-            <p class="daily-info-text">Vous avez déjà invoqué votre héros du jour.</p>
-            <div class="countdown-display">Prochaine génération dans : <strong>${remaining || 'Bientôt'}</strong></div>
-            <div class="daily-test-hint" style="margin-top: 16px;">
-              <button class="btn btn-outline btn-sm" id="btn-quick-reset-daily">
-                🔄 Réinitialiser le timer (Test local)
-              </button>
+      <div class="workshop-grid">
+        <!-- 1. Aimant à Pouvoirs Rares -->
+        <div class="workshop-card">
+          <div class="workshop-card-top">
+            <span class="upgrade-icon">${defs.rare_magnet.icon}</span>
+            <div class="upgrade-meta">
+              <h3 class="upgrade-name">${defs.rare_magnet.name}</h3>
+              <span class="upgrade-lvl">Niveau ${upgrades.rare_magnet || 0} / ${defs.rare_magnet.maxLevel}</span>
             </div>
-          `}
+          </div>
+          <p class="upgrade-desc">${defs.rare_magnet.desc}</p>
+          <div class="upgrade-current-bonus">
+            Bonus actuel : <strong>+${(upgrades.rare_magnet || 0) * defs.rare_magnet.bonusPerLevel}%</strong> sur les pouvoirs rares/mythiques
+          </div>
+          <div class="upgrade-action-row">
+            ${(upgrades.rare_magnet || 0) >= defs.rare_magnet.maxLevel ? `
+              <button class="btn btn-secondary btn-full" disabled>Niveau Maximum</button>
+            ` : `
+              <button class="btn btn-primary btn-full btn-upgrade" data-upgrade="rare_magnet">
+                Améliorer (${defs.rare_magnet.costs[upgrades.rare_magnet || 0]} 🪙)
+              </button>
+            `}
+          </div>
+        </div>
+
+        <!-- 2. Forge des Héros -->
+        <div class="workshop-card">
+          <div class="workshop-card-top">
+            <span class="upgrade-icon">${defs.hero_forge.icon}</span>
+            <div class="upgrade-meta">
+              <h3 class="upgrade-name">${defs.hero_forge.name}</h3>
+              <span class="upgrade-lvl">Niveau ${upgrades.hero_forge || 0} / ${defs.hero_forge.maxLevel}</span>
+            </div>
+          </div>
+          <p class="upgrade-desc">${defs.hero_forge.desc}</p>
+          <div class="upgrade-current-bonus">
+            Bonus actuel : <strong>+${(upgrades.hero_forge || 0) * defs.hero_forge.bonusHpPerLevel} PV</strong> et <strong>+${(upgrades.hero_forge || 0) * defs.hero_forge.bonusStrPerLevel} Force</strong>
+          </div>
+          <div class="upgrade-action-row">
+            ${(upgrades.hero_forge || 0) >= defs.hero_forge.maxLevel ? `
+              <button class="btn btn-secondary btn-full" disabled>Niveau Maximum</button>
+            ` : `
+              <button class="btn btn-primary btn-full btn-upgrade" data-upgrade="hero_forge">
+                Améliorer (${defs.hero_forge.costs[upgrades.hero_forge || 0]} 🪙)
+              </button>
+            `}
+          </div>
+        </div>
+
+        <!-- 3. Prime d'Arène -->
+        <div class="workshop-card">
+          <div class="workshop-card-top">
+            <span class="upgrade-icon">${defs.arena_bonus.icon}</span>
+            <div class="upgrade-meta">
+              <h3 class="upgrade-name">${defs.arena_bonus.name}</h3>
+              <span class="upgrade-lvl">Niveau ${upgrades.arena_bonus || 0} / ${defs.arena_bonus.maxLevel}</span>
+            </div>
+          </div>
+          <p class="upgrade-desc">${defs.arena_bonus.desc}</p>
+          <div class="upgrade-current-bonus">
+            Multiplicateur actuel : <strong>${(upgrades.arena_bonus || 0) > 0 ? 'x' + defs.arena_bonus.multipliers[(upgrades.arena_bonus || 0) - 1] : 'x1.00 (Standard)'}</strong>
+          </div>
+          <div class="upgrade-action-row">
+            ${(upgrades.arena_bonus || 0) >= defs.arena_bonus.maxLevel ? `
+              <button class="btn btn-secondary btn-full" disabled>Niveau Maximum</button>
+            ` : `
+              <button class="btn btn-primary btn-full btn-upgrade" data-upgrade="arena_bonus">
+                Améliorer (${defs.arena_bonus.costs[upgrades.arena_bonus || 0]} 🪙)
+              </button>
+            `}
+          </div>
+        </div>
+
+        <!-- 4. Jeton d'Urgence (Achat direct) -->
+        <div class="workshop-card workshop-card-instant">
+          <div class="workshop-card-top">
+            <span class="upgrade-icon">${defs.emergency_spin.icon}</span>
+            <div class="upgrade-meta">
+              <h3 class="upgrade-name">${defs.emergency_spin.name}</h3>
+              <span class="upgrade-lvl">Acheté(s) aujourd'hui : ${emergencyCount}</span>
+            </div>
+          </div>
+          <p class="upgrade-desc">${defs.emergency_spin.desc}</p>
+          <div class="upgrade-current-bonus">
+            Octroie immédiatement <strong>+1 Charge de tirage</strong> dans le générateur
+          </div>
+          <div class="upgrade-action-row">
+            <button class="btn btn-warning btn-full btn-upgrade" data-upgrade="emergency_spin">
+              Acheter 1 Charge (${emergencyCost} 🪙)
+            </button>
+          </div>
         </div>
       </div>
     </div>
   `;
 
-  container.querySelector("#btn-claim-daily")?.addEventListener("click", () => {
-    if (onTriggerDaily) onTriggerDaily();
-  });
+  // Bind upgrade clicks
+  container.querySelectorAll(".btn-upgrade").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const upgradeId = btn.getAttribute("data-upgrade");
+      const res = progressionManager.buyWorkshopUpgrade(upgradeId);
 
-  container.querySelector("#btn-quick-reset-daily")?.addEventListener("click", () => {
-    progressionManager.resetDaily();
-    renderDailyView(container, onTriggerDaily);
+      if (res.success) {
+        showToast(`🎉 ${res.message}`, "success");
+        renderWorkshopView(container, onWorkshopUpdated);
+        if (onWorkshopUpdated) onWorkshopUpdated();
+      } else {
+        showToast(`⚠️ ${res.message}`, "warning");
+      }
+    });
   });
 }
 
+/**
+ * VUE CLASSEMENT ÉLO
+ */
 export function renderLeaderboardView(container) {
   const leaderboard = progressionManager.getLeaderboard();
 
@@ -63,15 +162,15 @@ export function renderLeaderboardView(container) {
     <div class="leaderboard-wrapper">
       <div class="leaderboard-header">
         <h2>🏆 Classement des Joueurs</h2>
-        <p class="section-subtitle">Grimpez au sommet de l'arène en remportant des victoires et en amassant des points</p>
+        <p class="section-subtitle">Affrontez des rivaux en arène pour faire grimper votre classement Élo et atteindre la Ligue Maître</p>
       </div>
 
       <div class="leaderboard-table-card">
         <div class="table-header-row">
           <div class="col-rank">Rang</div>
           <div class="col-name">Joueur</div>
-          <div class="col-title">Titre</div>
-          <div class="col-points">Points</div>
+          <div class="col-title">Ligue</div>
+          <div class="col-points">Score ÉLO</div>
         </div>
         <div class="table-body">
           ${leaderboard.map(entry => `
@@ -82,8 +181,10 @@ export function renderLeaderboardView(container) {
               <div class="col-name">
                 ${entry.name} ${entry.isPlayer ? '<span class="you-badge">VOUS</span>' : ''}
               </div>
-              <div class="col-title">${entry.title}</div>
-              <div class="col-points font-bold">${entry.points.toLocaleString()} pts</div>
+              <div class="col-title" style="color: ${entry.league.color}">
+                ${entry.league.icon} ${entry.league.name}
+              </div>
+              <div class="col-points font-bold gold-text">${entry.elo} pts</div>
             </div>
           `).join("")}
         </div>
@@ -92,8 +193,10 @@ export function renderLeaderboardView(container) {
   `;
 }
 
+/**
+ * VUE STATISTIQUES & SUCCÈS
+ */
 export function renderStatsView(container) {
-  // Synchronise et évalue immédiatement tous les critères de succès
   progressionManager.checkAchievements();
 
   const stats = progressionManager.state.stats;
@@ -101,6 +204,8 @@ export function renderStatsView(container) {
   const achievements = progressionManager.getAchievementsList();
   const unlockedMap = progressionManager.state.unlockedAchievements;
   const collCount = collectionManager.getAll().length;
+  const playerElo = progressionManager.getElo();
+  const playerLeague = progressionManager.getLeague();
 
   const totalSynergiesCount = SYNERGIES.length;
   const discoveredSynCount = (stats.discoveredSynergies || []).length;
@@ -115,7 +220,7 @@ export function renderStatsView(container) {
     <div class="stats-page-wrapper">
       <div class="stats-header">
         <h2>📊 Statistiques & Succès</h2>
-        <p class="section-subtitle">Votre progression globale et hauts faits accomplis</p>
+        <p class="section-subtitle">Votre progression globale, classement Élo et hauts faits accomplis</p>
       </div>
 
       <!-- CARTE NIVEAU ET XP -->
@@ -135,8 +240,16 @@ export function renderStatsView(container) {
         </div>
       </div>
 
-      <!-- GRILLE DES STATISTIQUES (Section 34) -->
+      <!-- GRILLE DES STATISTIQUES V2 -->
       <div class="stats-metrics-grid">
+        <div class="metric-card">
+          <div class="metric-val gold-text">${playerElo}</div>
+          <div class="metric-lbl">${playerLeague.icon} Ligue ${playerLeague.name}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val text-win">${progressionManager.getCoins().toLocaleString()} 🪙</div>
+          <div class="metric-lbl">Solde de pièces actuel</div>
+        </div>
         <div class="metric-card">
           <div class="metric-val">${stats.totalBattles}</div>
           <div class="metric-lbl">⚔️ Combats menés</div>
@@ -154,12 +267,12 @@ export function renderStatsView(container) {
           <div class="metric-lbl">👥 Personnages actuels</div>
         </div>
         <div class="metric-card">
-          <div class="metric-val text-leg">${stats.legendariesCount}</div>
-          <div class="metric-lbl">🌟 Légendaires obtenus</div>
+          <div class="metric-val text-rare">${stats.totalRecycled || 0}</div>
+          <div class="metric-lbl">♻️ Cartes recyclées</div>
         </div>
         <div class="metric-card">
-          <div class="metric-val text-rare">${stats.highestPower || '-'}</div>
-          <div class="metric-lbl">💥 Meilleur Power atteint</div>
+          <div class="metric-val text-leg">${stats.legendariesCount}</div>
+          <div class="metric-lbl">🌟 Légendaires obtenus</div>
         </div>
         <div class="metric-card">
           <div class="metric-val">${discoveredSynCount} / ${totalSynergiesCount}</div>
@@ -171,7 +284,7 @@ export function renderStatsView(container) {
         </div>
       </div>
 
-      <!-- SUCCÈS (Section 33) -->
+      <!-- SUCCÈS -->
       <div class="achievements-section">
         <h3>🏅 Succès (${Object.keys(unlockedMap).length} / ${achievements.length})</h3>
         <div class="achievements-grid">
@@ -195,3 +308,4 @@ export function renderStatsView(container) {
     </div>
   `;
 }
+
