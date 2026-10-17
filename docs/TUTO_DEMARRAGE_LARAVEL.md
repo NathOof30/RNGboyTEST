@@ -7,39 +7,23 @@
 
 ## 0. Organisation du Workspace
 
-### Structure recommandée
+### Structure du projet
 
 ```
-C:\Users\natha\Documents\PROJET\
-└── PROJET_WHEELBORN\              ← Dossier parent du projet global
-    ├── RNGboy\                    ← Ton prototype JS actuel (copie ou déplacement)
-    │   ├── src/
-    │   ├── index.html
-    │   ├── package.json
-    │   └── ...
-    └── wheelborn\                 ← Nouveau projet Laravel (on va le créer ici)
-        ├── app/
-        ├── database/
-        ├── resources/
-        └── ...
-```
-
-### Comment faire
-
-```powershell
-# 1. Créer le dossier parent
-mkdir "C:\Users\natha\Documents\PROJET\PROJET_WHEELBORN"
-
-# 2. COPIER (pas déplacer) le prototype pour garder l'original intact
-Copy-Item -Path "C:\Users\natha\Documents\PROJET\RNGboy" `
-          -Destination "C:\Users\natha\Documents\PROJET\PROJET_WHEELBORN\RNGboy" `
-          -Recurse -Exclude "node_modules"
-
-# 3. Le projet Laravel sera créé dans l'étape 2
+C:\Users\natha\Documents\PROJET\WHEELBORN_PROJECT\
+├── RNGboy(prototype)\             ← Le prototype JS actuel et sa documentation (dossier docs/)
+│   ├── docs/                      ← Spécifications, GDD, plans d'architecture
+│   ├── src/                       ← Code source JS du prototype (référence gameplay)
+│   └── ...
+└── WHEELBORN\                     ← Le projet Laravel 11 + Livewire 3 (initialisé ici)
+    ├── app/
+    ├── database/
+    ├── resources/
+    └── ...
 ```
 
 > [!IMPORTANT]
-> **Ouvre ensuite ton éditeur / Antigravity dans `PROJET_WHEELBORN`** comme workspace. Tu auras accès au prototype (référence) ET au projet Laravel côté à côté.
+> **Ouvre ton éditeur / Antigravity dans `WHEELBORN_PROJECT`** comme workspace racine. Tu as ainsi accès simultanément au prototype & à sa documentation d'un côté, et à ton application Laravel de l'autre.
 
 ---
 
@@ -90,12 +74,11 @@ winget install Composer.Composer
 ## 2. Créer le Projet Laravel
 
 ```powershell
-cd "C:\Users\natha\Documents\PROJET\PROJET_WHEELBORN"
+# Se positionner dans le dossier WHEELBORN
+cd "C:\Users\natha\Documents\PROJET\WHEELBORN_PROJECT\WHEELBORN"
 
-# Créer le projet Laravel 11 (dernière version stable)
-composer create-project laravel/laravel wheelborn
-
-cd wheelborn
+# Créer le projet Laravel 11 (dernière version stable) directement dans ce dossier
+composer create-project laravel/laravel .
 ```
 
 ### ✅ Vérification
@@ -106,28 +89,43 @@ php artisan --version
 
 php artisan serve
 # Ouvre http://127.0.0.1:8000 dans ton navigateur
-# Tu dois voir la page d'accueil Laravel
+# Tu dois voir la page d'accueil Laravel par défaut
 # Ctrl+C pour arrêter le serveur
 ```
 
 ---
 
-## 3. Installer Breeze (Authentification) + Tailwind
+## 3. Installer Livewire 3 + Breeze (Authentification) + Tailwind
+
+> [!IMPORTANT]
+> **Pourquoi cette configuration est la meilleure solution pour ton projet universitaire :**
+> 1. **Livewire 3** (`composer require livewire/livewire`) est la brique réactive **obligatoire** de ton sujet. Elle intègre **Alpine.js 3** nativement et permet de gérer toute la dynamique temps réel (tirages, arène, inventaire) sans quitter l'écosystème Laravel.
+> 2. **Laravel Breeze avec le profil Blade** (`breeze:install blade`) est le choix optimal car :
+>    - Il génère un système d'authentification complet et sécurisé (Connexion, Inscription, Reset MDP, Gestion profil) stylisé avec Tailwind CSS.
+>    - Il garde l'authentification standard, légère et éprouvée, réservant **Livewire 3 aux 6 composants interactifs du jeu** (`CharacterWheel`, `CollectionGrid`, `BattleArena`, `Workshop`, `Leaderboard`, `ProfileStats`). C'est l'architecture la plus claire et la plus appréciée lors d'une soutenance académique (séparation nette MVC standard / Composants réactifs).
+>    *(Note : Si l'évaluateur demande expressément que même les pages d'auth soient en Livewire Volt, tu pourras exécuter `php artisan breeze:install livewire` à la place).*
 
 ```powershell
-# Installer Laravel Breeze
+# 3.1. Installer Livewire 3 (Obligatoire)
+composer require livewire/livewire
+
+# 3.2. Installer Laravel Breeze en dépendance de développement
 composer require laravel/breeze --dev
 
-# Scaffolding avec Blade + Tailwind (pas React, pas Vue)
+# 3.3. Scaffolding Breeze avec Blade + Tailwind
 php artisan breeze:install blade
 
-# Installer les dépendances front-end
+# 3.4. Installer les dépendances front-end (Vite, Tailwind, etc.)
 npm install
 ```
 
 ### ✅ Vérification
 
 ```powershell
+# Vérifier que les commandes Livewire sont disponibles
+php artisan list livewire
+# Tu dois voir les commandes 'make:livewire', 'livewire:publish', etc.
+
 # Compiler les assets Tailwind
 npm run build
 
@@ -584,16 +582,29 @@ class RaceData
 
 ---
 
-## 9. Créer le Layout Principal (Thème Dark)
+## 9. Créer le Layout Principal (Thème Dark) & Intégration Livewire
 
-Le layout Breeze par défaut est clair. On va le transformer en thème dark néon inspiré du prototype.
+Le layout Breeze par défaut est clair. On va le transformer en thème dark néon inspiré du prototype et s'assurer que Livewire et Alpine.js y sont correctement intégrés.
 
 ### Modifier `resources/views/layouts/app.blade.php`
 
-Tu peux personnaliser le layout Breeze existant. L'important est d'avoir :
-- Un fond sombre (`bg-slate-950`)
-- Une navbar avec les onglets du jeu (Spin, Collection, Combat, Atelier, Classement)
-- Le système de navigation par onglets
+Dans ce layout Breeze :
+1. **Dans la balise `<head>`**, vérifie ou ajoute les directives de styles Livewire :
+   ```blade
+   <meta name="csrf-token" content="{{ csrf_token() }}">
+   @livewireStyles
+   @vite(['resources/css/app.css', 'resources/js/app.js'])
+   ```
+2. **Sur la balise `<body>`**, applique le fond sombre du jeu :
+   ```blade
+   <body class="font-sans antialiased bg-slate-950 text-slate-100 min-h-screen">
+   ```
+3. **Avant la fermeture `</body>`**, ajoute les scripts Livewire (Alpine.js y est inclus automatiquement) :
+   ```blade
+   @livewireScripts
+   </body>
+   ```
+*(Note : Livewire 3 injecte ses styles et scripts automatiquement, mais les expliciter dans le layout est une bonne pratique académique pour éviter tout problème avec Vite).*
 
 ### Modifier `resources/css/app.css`
 
@@ -625,16 +636,37 @@ Ajouter tes tokens custom après les imports Tailwind :
 ## 10. Premier Composant Livewire : CharacterWheel
 
 ```powershell
-# Créer le composant Livewire
+# Créer le premier composant Livewire
 php artisan make:livewire CharacterWheel
 ```
 
 Cela crée deux fichiers :
-- `app/Livewire/CharacterWheel.php` (logique PHP)
+- `app/Livewire/CharacterWheel.php` (logique PHP du composant réactif)
 - `resources/views/livewire/character-wheel.blade.php` (template Blade)
 
+### Tester l'intégration dans `resources/views/dashboard.blade.php`
+
+Pour vérifier immédiatement le fonctionnement de Livewire, appelle le composant dans le dashboard :
+
+```blade
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-yellow-400 leading-tight">
+            🎡 WHEELBORN — Tirage de Personnage
+        </h2>
+    </x-slot>
+
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            {{-- Composant Livewire --}}
+            <livewire:character-wheel />
+        </div>
+    </div>
+</x-app-layout>
+```
+
 > [!NOTE]
-> Le code du composant est détaillé dans [PLAN_PORTAGE_LARAVEL.md](file:///c:/Users/natha/Documents/PROJET/RNGboy/PLAN_PORTAGE_LARAVEL.md#L942-L1050) et dans les [stratégies techniques](file:///c:/Users/natha/.gemini/antigravity-ide/brain/e00ce2ac-68c6-4ddb-96c6-b2fc5be485a7/strategies_techniques_wheelborn.md).
+> Le code PHP et Blade complet du composant est détaillé dans [PLAN_PORTAGE_LARAVEL.md](PLAN_PORTAGE_LARAVEL.md#L942-L1050) et dans [STRATEGIES_TECHNIQUES.md](STRATEGIES_TECHNIQUES.md).
 
 ---
 
@@ -660,9 +692,10 @@ npm run dev
 Coche chaque étape au fur et à mesure :
 
 ### Phase 1 — Fondations
-- [ ] Dossier `PROJET_WHEELBORN` créé avec prototype copié
+- [ ] Workspace prêt (`WHEELBORN_PROJECT` avec `RNGboy(prototype)` et `WHEELBORN`)
 - [ ] Laravel 11 installé (`composer create-project`)
-- [ ] Breeze + Tailwind installés
+- [ ] **Livewire 3 installé** (`composer require livewire/livewire`)
+- [ ] Breeze + Tailwind installés (`breeze:install blade`)
 - [ ] BDD configurée (SQLite par défaut)
 - [ ] Migrations de base lancées (`php artisan migrate`)
 - [ ] Inscription/connexion fonctionnelles
@@ -671,7 +704,7 @@ Coche chaque étape au fur et à mesure :
 - [ ] Modèles Eloquent créés (Character, Battle, ArenaSession, etc.)
 - [ ] Enums PHP créés (Rarity, PowerTier, League)
 - [ ] Fichiers Data PHP créés (RaceData, WeaponData, PowerData, SynergyData, GameConfig)
-- [ ] Layout dark néon appliqué
+- [ ] Layout dark néon avec intégration Livewire (@livewireStyles / @livewireScripts)
 
 ### Phase 2 — Cœur du Jeu
 - [ ] `CharacterGeneratorService` implémenté

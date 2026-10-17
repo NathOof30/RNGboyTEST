@@ -1056,6 +1056,10 @@ class CharacterWheel extends Component
 ### 7.1. Solution Recommandée : Laravel Breeze
 
 ```bash
+# 1. Installation de Livewire 3 (moteur réactif obligatoire)
+composer require livewire/livewire
+
+# 2. Installation de Breeze (authentification)
 composer require laravel/breeze --dev
 php artisan breeze:install blade
 ```
